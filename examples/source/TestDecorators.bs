@@ -1,0 +1,27 @@
+
+
+' Comments should go before annotations and decorators
+'
+' @param {string} param1 A no op value
+' @return {string} whatever was included as param1
+@someDecorator("func")
+function funcWithDecorator(param1 as string) as string
+  return param1
+end function
+
+' Description of the class - this is before the annotation
+@someDecorator("class")
+class DecoratorsTestKlass
+
+  @someDecorator("property")
+  property as float = 3.14 ' yum, pi!
+
+  ' Member function comments come before decorators
+  '
+  ' @param {} num
+  ' @return {string}
+  @someDecorator({"method"})
+  function someFunc(num) as string
+    return `hello ${num}`
+  end function
+end class

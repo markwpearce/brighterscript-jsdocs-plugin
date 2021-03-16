@@ -58,7 +58,7 @@ namespace TestDoc
 
     ' Test comment overriding parser
     ' @param {TestKlass} klass an actual klass name in the comments
-    function testCommentsWithClasses(klass) as object
+    function testCommentsWithClasses(klass = {} as MyClass) as MyClass
       return klass
     end function
 

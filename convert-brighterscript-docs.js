@@ -91,6 +91,7 @@ function paramOrReturnDescriptionHelper(desc = "") {
 
 /**
  * Finds the comment that ends the line above the given statement
+ * If the statement has annotations, the comment should be BEFORE the annotations
  *
  * @param {bs.CommentStatement[]} comments List of comments to search
  * @param {bs.Statement} stmt The statement in question
@@ -98,7 +99,12 @@ function paramOrReturnDescriptionHelper(desc = "") {
  */
 function getCommentForStatement(comments, stmt) {
   return comments.find((comment) => {
-    return comment.range.end.line + 1 === stmt.range.start.line
+    const commentEndLine = comment.range.end.line;
+    let targetStartLine = stmt.range.start.line
+    if (stmt.annotations && stmt.annotations.length > 0) {
+      targetStartLine = stmt.annotations[0].range.start.line;
+    }
+    return commentEndLine + 1 === targetStartLine || commentEndLine === stmt.range.start.line
   })
 }
 

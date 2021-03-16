@@ -28,8 +28,8 @@
   },
   "homepage": "https://github.com/markwpearce/brighterscript-jsdocs-plugin",
   "dependencies": {
-    "brighterscript": "^0.25.0",
-    "jsdoc": "^3.6.3"
+    "brighterscript": "^0.35.0",
+    "jsdoc": "^3.6.6"
   },
   "devDependencies": {
     "braintree-jsdoc-template": "^3.3.0"
