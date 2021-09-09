@@ -1,0 +1,17 @@
+' @module BGE
+namespace BGE.Debug.Alpha.Beta
+
+  class DebugWindow extends BGE.UI.UiContainer
+
+    function new(game as BGE.Game) as void
+      super(game)
+      m.backgroundRGBA = BGE.RGBAtoRGBA(128, 128, 128, 0.5)
+      m.padding.set(10)
+    end function
+
+
+
+
+  end class
+
+end namespace

@@ -4,7 +4,7 @@
   "description": "Plugin For JSDoc that converts Brighterscript files into comments compatible with JSDoc",
   "author": "Mark Pearce",
   "scripts": {
-    "docs": "rm -rf docs && ./node_modules/.bin/jsdoc -c jsdoc.json -t node_modules/braintree-jsdoc-template -d docs",
+    "docs": "rm -rf docs && ./node_modules/.bin/jsdoc -c jsdoc.json -d docs",
     "test": "sh ./scripts/test.sh"
   },
   "files": [
@@ -28,8 +28,8 @@
   },
   "homepage": "https://github.com/markwpearce/brighterscript-jsdocs-plugin",
   "dependencies": {
-    "brighterscript": "^0.35.0",
-    "jsdoc": "^3.6.6"
+    "brighterscript": "^0.40.0",
+    "jsdoc": "^3.6.7"
   },
   "devDependencies": {
     "braintree-jsdoc-template": "^3.3.0"

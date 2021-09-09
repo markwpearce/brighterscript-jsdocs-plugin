@@ -50,24 +50,38 @@ Example:
     "includePattern": ".+\\.br?s$"
   },
   "opts": {
-    "recurse": true
+    "recurse": true,
+    "template": "node_modules/clean-jsdoc-theme", // or whatever template you've chosen - see below
+    "brighterscript-jsdocs-plugin": {
+      "addModule": true // true by default - should we generate module names based on the file names?
+    }
   }
 }
 ```
+
+Note: You may want to set configuration value `opts.brighterscript-jsdocs-plugin.addModule` to `false` if you are using Brighterscript namespaces and you want your code grouped by namespace.
 
 3. Add a script to `package.json` like:
 
 ```json
   "scripts": {
-    "docs": "./node_modules/.bin/jsdoc -c jsdoc.json -d docs -t ./node_modules/braintree-jsdoc-template"
+    "docs": "./node_modules/.bin/jsdoc -c jsdoc.json -d docs"
   }
 ```
+
+# Generating Documentation
 
 Run the script to generate documentation! (Documentation is put in the `./docs/` folder)
 
 ```
 npm run docs
 ```
+
+# Templates
+
+The default JSDocs template may not meet your needs. Here's a good list of templates that are available:
+
+https://cancerberosgx.github.io/jsdoc-templates-demo/demo/
 
 # Brightscript and Brighterscript
 
@@ -83,7 +97,7 @@ It is not necessary to wrap BrightScript comments in javascript style comments, 
 
 These comments will be parsed the same:
 
-```bs
+```
 ' Give the maximum of two numbers
 ' @param {integer} x - the first number
 ' @param {integer} y - the second number
@@ -111,7 +125,7 @@ end function
 
 ## Example
 
-```bs
+```
 ' Namespace for testing
 namespace TestBsDoc
 
