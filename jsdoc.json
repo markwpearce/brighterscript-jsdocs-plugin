@@ -7,10 +7,13 @@
     "include": [
       "examples"
     ],
-    "includePattern": ".+\\.br?s$"
+    "includePattern": ".+\\DebugWindow.br?s$"
   },
+  "extendedConfig": {},
   "opts": {
     "recurse": true,
-    "template": "node_modules/braintree-jsdoc-template"
+    "readme": "README.md",
+    "template": "node_modules/braintree-jsdoc-template",
+    "brighterscript-jsdocs-plugin": {}
   }
 }

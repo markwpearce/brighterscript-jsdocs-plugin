@@ -1,15 +1,26 @@
 'use strict';
 const bs = require('brighterscript');
 const path = require('path');
-
 const jsCommentStartRegex = /^[\s]*(?:\/\*+)?[\s]*(.*)/g
 const bsMeaningfulCommentRegex = /^[\s]*(?:'|REM)[\s]*\**[\s]*(.*)/g
 const paramRegex = /@param\s+(?:{([^}]*)})?\s+(?:\[(\w+).*\]|(\w+))[\s-\s|\s]*(.*)/
 const returnRegex = /@returns?\s*({(?:[^}]*)})?\s*(.*)/
 const extendsRegex = /@extends/
+const moduleRegex = /@module ([^\*\s]+)/
+const opts = env && env.opts || {}
+const pluginOpts = opts['brighterscript-jsdocs-plugin'] || {};
+
+if (pluginOpts.addModule === undefined || pluginOpts.addModule === null) {
+  pluginOpts.addModule = true
+}
+
+
 
 /** @type {string[]} */
 const namespacesCreated = []
+
+/** @type {string[]} */
+const modulesCreated = []
 
 /** @type {string[]} */
 let parserLines = []
@@ -109,12 +120,26 @@ function getCommentForStatement(comments, stmt) {
 }
 
 function getMemberOf(moduleName = "", namespaceName = "") {
-  const memberOf = namespaceName || moduleName;
-
+  const memberOf = namespaceName || moduleName.replace(/\./g, '/');
+  const memberType = /*namespaceName ? "" : */ "module:"
   if (memberOf) {
-    return (` * @memberof module:${memberOf}`);
+    return ` * @memberof! ${memberType}${memberOf.replace(/\./g, '/')}`;
   }
   return ""
+}
+
+/**
+ *
+ * @param {string} moduleName
+ * @returns
+ */
+function getModuleLineComment(moduleName = "") {
+  const modifiedModuleName = moduleName.replace(/\./g, '/')
+  if (!modifiedModuleName || modulesCreated.includes(modifiedModuleName)) {
+    return ""
+  }
+  modulesCreated.push(modifiedModuleName);
+  return [`/**`, ` * @module ${modifiedModuleName}`, ` */`].join('\n');
 }
 
 /**
@@ -134,13 +159,16 @@ function convertCommentTextToJsDocLines(comment) {
     //  * Comment here
     commentLines.push(...comment.text.split('\n').map((line, i) => {
       return line.replace(bsMeaningfulCommentRegex, '$1');
-    }).map(line => line.trim()).map((line, i, lines) => {
-      if (i === 0) {
-        line = line.replace(jsCommentStartRegex, '$1');
-      }
-      line = line.replace(/\**\/\s*/g, "")
-      return " * " + line;
-    }))
+    }).map(line => line.trim())
+      .filter((line) => {
+        return !line.includes('@module')
+      }).map((line, i, lines) => {
+        if (i === 0) {
+          line = line.replace(jsCommentStartRegex, '$1');
+        }
+        line = line.replace(/\**\/\s*/g, "")
+        return " * " + line;
+      }))
   }
   return commentLines
 }
@@ -333,7 +361,7 @@ function processClass(comment, klass, moduleName = "", namespaceName = "") {
   let parentClassName = "", extendsLine = ""
   if (klass.parentClassName) {
     parentClassName = klass.parentClassName.getName()
-    extendsLine = ` * @extends ${klass.parentClassName.getName()} `
+    extendsLine = ` * @extends ${klass.parentClassName.getName(bs.ParseMode.BrighterScript)} `
   }
 
   for (var i = 0; i < commentLines.length; i++) {
@@ -371,6 +399,7 @@ function processClass(comment, klass, moduleName = "", namespaceName = "") {
 
   output.push('}\n')
   if (namespaceName) {
+    // output.push(...['/**', ' * @class', ' */']);
     output.push(`${namespaceName}.${klassName} = ${klassName}; `)
   }
   return output.join('\n')
@@ -389,32 +418,52 @@ function processClass(comment, klass, moduleName = "", namespaceName = "") {
 function processNamespace(comment, namespace, moduleName = "", parentNamespaceName) {
 
   const output = [];
-  let namespaceName = namespace.name;
-
-  if (parentNamespaceName) {
-    namespaceName = parentNamespaceName + "." + namespaceName
+  const namespaceParts = namespace.name.split('.');
+  const namespaceNames = []
+  let namespaceNameChain = ""
+  for (const namespacePart of namespaceParts) {
+    if (namespaceNameChain.length > 0) {
+      namespaceNameChain += '.'
+    }
+    namespaceNameChain += namespacePart;
+    namespaceNames.push(namespaceNameChain)
   }
-  if (!namespacesCreated.includes(namespaceName)) {
-    // have not created this namespace yet
-    let commentLines = convertCommentTextToJsDocLines(comment);
-
-    //  if (namespaceName !== moduleName) {
-    commentLines.push(getMemberOf(moduleName, parentNamespaceName));
-    // }
-    commentLines.push(` * @namespace ${namespaceName} `)
-    commentLines.push(' */');
-
-    output.push(commentLines.join('\n'));
+  let index = 0
+  let previousNamespace = ""
+  for (const namespaceName of namespaceNames) {
+    let subNamespace = namespaceName
     if (parentNamespaceName) {
-      output.push(`${parentNamespaceName}.namespaceName = {}`)
+      subNamespace = parentNamespaceName + "." + namespaceName
     }
-    else {
-      output.push(`var ${namespaceName} = {}; `);
-    }
-    namespacesCreated.push(namespaceName)
-  }
+    if (!namespacesCreated.includes(subNamespace)) {
+      // have not created this namespace yet
 
-  output.push(processStatements(namespace.body.statements, moduleName, namespaceName))
+      output.push(getModuleLineComment(subNamespace));
+      let commentLines = convertCommentTextToJsDocLines(comment);
+      if (subNamespace != moduleName) {
+        commentLines.push(getMemberOf(previousNamespace));
+      }
+      //commentLines.push(` * @namespace {object} ${subNamespace} `)
+      commentLines.push(' */');
+
+      output.push(commentLines.join('\n'));
+      /*
+            if (parentNamespaceName || index > 0) {
+              output.push(`${subNamespace} = {}`)
+            }
+            else {
+              output.push(`var ${subNamespace} = {}; `);
+            }*/
+      namespacesCreated.push(subNamespace)
+    }
+    previousNamespace = subNamespace
+    index++
+  }
+  let totalNamespace = namespace.name
+  if (parentNamespaceName) {
+    totalNamespace = parentNamespaceName + "." + totalNamespace
+  }
+  output.push(processStatements(namespace.body.statements, moduleName, totalNamespace))
   return output.join('\n');
 }
 
@@ -472,19 +521,20 @@ exports.handlers = {
     const statements = parseResult.statements
 
     // Add our module to the top of the file if it doesn't exist. If it does find out the name
-    const moduleMatch = e.source.match(/@module ([^\*\s]+)/);
-    let moduleName = "";
+    const moduleMatch = e.source.match(moduleRegex);
     const output = [];
-    if (moduleMatch) {
-      moduleName = moduleMatch[1];
-    } else {
-      moduleName = path.parse(e.filename).name.replace(/\./g, '_');
+    let moduleName = "";
+    if (pluginOpts.addModule) {
+      if (moduleMatch) {
+        moduleName = moduleMatch[1];
+      } else {
+        moduleName = path.parse(e.filename).name.split('.')[0].replace(/\./g, '_');
+      }
+      output.push(getModuleLineComment(moduleName));
     }
-    output.push(`/** @module ${moduleName} */`);
-
     output.push(processStatements(statements, moduleName))
 
     e.source = output.join('\n');
-    //console.log(e.source)
+    // console.log(e.source)
   }
 };

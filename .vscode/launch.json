@@ -9,7 +9,7 @@
       "program": "${workspaceFolder}/node_modules/.bin/jsdoc",
       "request": "launch",
       "cwd": "${workspaceFolder}",
-      "args": ["-c", "jsdoc.json", "-t", "node_modules/minami", "-d", "docs"],
+      "args": ["-c", "jsdoc.json", "-d", "docs"],
       "skipFiles": ["<node_internals>/**"],
       "type": "node",
       "sourceMaps": true
