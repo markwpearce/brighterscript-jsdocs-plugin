@@ -53,7 +53,8 @@ Example:
     "recurse": true,
     "template": "node_modules/clean-jsdoc-theme", // or whatever template you've chosen - see below
     "brighterscript-jsdocs-plugin": {
-      "addModule": true // true by default - should we generate module names based on the file names?
+      "addModule": true, // true by default - should we generate module names based on the file names?
+      "escapeHTMLCharacters": false // false by default - should we escape html characters (<>/&") in comments?
     }
   }
 }
@@ -68,6 +69,16 @@ Note: You may want to set configuration value `opts.brighterscript-jsdocs-plugin
     "docs": "./node_modules/.bin/jsdoc -c jsdoc.json -d docs"
   }
 ```
+
+# Options
+
+You can add these options to the `jsdoc.json` file under `opts.brighterscript-jsdocs-plugin`
+
+addModule
+: Boolean (`true`/`false`) - Should we generate module names based on the file names? - defaults to `true`
+
+escapeHTMLCharacters
+: Boolean (`true`/`false`) - Should we escape html characters (`<>/&"'`) in comments? - defaults to `false`
 
 # Generating Documentation
 

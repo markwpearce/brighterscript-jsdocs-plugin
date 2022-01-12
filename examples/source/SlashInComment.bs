@@ -1,0 +1,33 @@
+
+
+' Prints out an example xml node
+' @example
+'   exampleWithXmlInComment("myId", 6) ' returns   "<node id="myId" count="6"></node>"
+'
+' @param {string} id some value to use as id
+' @param {integer} count some value to use as the count property
+sub exampleWithXmlInComment(id as string, count as integer)
+  xml = "<node id=" + wrapStringInQuotes(id) + " count=" + wrapStringInQuotes(str(count)) + "></node>"
+  print xml
+end sub
+
+
+' Takes a string and returns the same string with double quotes (") before and after
+'
+' @param {string} input the input string
+' @return {string} the input string, but with double quotes before and after
+function wrapStringInQuotes(input as string) as string
+  return chr(37) + input + chr(37)
+end function
+
+
+' Performs simple division
+' @example
+' print divide(16, 4)  ' prints out 16/4 = 4
+'
+' @param {float} dividend
+' @param {float} divisor
+' @return {float}
+function divide(dividend as float, divisor as float) as float
+  return dividend / divisor
+end function

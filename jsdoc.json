@@ -7,7 +7,7 @@
     "include": [
       "examples"
     ],
-    "includePattern": ".+\\DebugWindow.br?s$"
+    "includePattern": ".+\\.br?s$"
   },
   "extendedConfig": {},
   "opts": {

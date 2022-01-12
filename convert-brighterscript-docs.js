@@ -14,6 +14,9 @@ if (pluginOpts.addModule === undefined || pluginOpts.addModule === null) {
   pluginOpts.addModule = true
 }
 
+if (pluginOpts.addModule === undefined || pluginOpts.addModule === null) {
+  pluginOpts.addModule = true
+}
 
 
 /** @type {string[]} */
@@ -24,6 +27,15 @@ const modulesCreated = []
 
 /** @type {string[]} */
 let parserLines = []
+
+/** @type{{}} */
+const escapeCharEntities = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  "\"": "&quot;",
+  "'": "&apos;"
+};
 
 /**
  * Groups Statements into comments, functions, classes and namespaces
@@ -143,6 +155,20 @@ function getModuleLineComment(moduleName = "") {
 }
 
 /**
+ *
+ * @param {string} line input string
+ * @return {string} the same string with HTML special characters escaped
+ */
+function escapeHTMLCharacters(line) {
+  let outLine = line;
+  for (const char in escapeCharEntities) {
+    outLine = outLine.replace(new RegExp(char, 'g'), escapeCharEntities[char])
+  }
+  return outLine;
+}
+
+
+/**
  * Convert a comment statement text to Js Doc Lines
  * This will return a string[] with each line of a block comment
  * But - it does not include comment closing tag (ie. asterisk-slash)
@@ -166,7 +192,10 @@ function convertCommentTextToJsDocLines(comment) {
         if (i === 0) {
           line = line.replace(jsCommentStartRegex, '$1');
         }
-        line = line.replace(/\**\/\s*/g, "")
+        line = line.replace(/\*+\/\s*/g, "")
+        if (pluginOpts.escapeHTMLCharacters) {
+          line = escapeHTMLCharacters(line);
+        }
         return " * " + line;
       }))
   }
