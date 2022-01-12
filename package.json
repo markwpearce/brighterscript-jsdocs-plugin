@@ -1,6 +1,6 @@
 {
   "name": "brighterscript-jsdocs-plugin",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Plugin For JSDoc that converts Brighterscript files into comments compatible with JSDoc",
   "author": "Mark Pearce",
   "scripts": {
