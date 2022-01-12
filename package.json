@@ -28,7 +28,7 @@
   },
   "homepage": "https://github.com/markwpearce/brighterscript-jsdocs-plugin",
   "dependencies": {
-    "brighterscript": "^0.40.0",
+    "brighterscript": "^0.42.0",
     "jsdoc": "^3.6.7"
   },
   "devDependencies": {
