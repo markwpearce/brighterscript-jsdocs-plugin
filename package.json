@@ -4,7 +4,7 @@
   "description": "Plugin For JSDoc that converts Brighterscript files into comments compatible with JSDoc",
   "author": "Mark Pearce",
   "scripts": {
-    "docs": "jsdoc -c jsdoc.json -d docs",
+    "docs": "rm -rf docs && ./node_modules/.bin/jsdoc -c jsdoc.json -d docs",
     "test": "sh ./scripts/test.sh"
   },
   "files": [
