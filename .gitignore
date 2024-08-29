@@ -9,4 +9,4 @@ out/
 .settings/
 node_modules/
 docs/*
-./convert-brighterscript-docs.*
+convert-brighterscript-docs.*
