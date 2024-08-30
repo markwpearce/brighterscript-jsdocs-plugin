@@ -1,0 +1,5 @@
+const PI = 3.14159265359;
+
+namespace Alpha
+  const ROKU = "roku";
+end namespace
