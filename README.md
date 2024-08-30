@@ -41,7 +41,7 @@ Example:
 {
     "plugins": [
         "plugins/markdown",
-        "./node_modules/brighterscript-jsdocs-plugin/dist/convert-brighterscript-docs.js"
+        "./node_modules/brighterscript-jsdocs-plugin/convert-brighterscript-docs.js"
     ],
     "source": {
         "include": [
@@ -54,13 +54,13 @@ Example:
         "template": "node_modules/clean-jsdoc-theme", // or whatever template you've chosen - see below
         "brighterscript-jsdocs-plugin": {
             "addModule": true, // true by default - should we generate module names based on the file names?
-            "escapeHTMLCharacters": false // false by default - should we escape html characters (<>/&") in comments?
+            "escapeHTMLCharacters": true // true by default - should we escape html characters (<>/&") in comments?
         }
     }
 }
 ```
 
-Note: You may want to set configuration value `opts.brighterscript-jsdocs-plugin.addModule` to `false` if you are using Brighterscript namespaces and you want your code grouped by namespace.
+Note: If you are using Brighterscript Namespaces, they override any `@module` setting in the code.
 
 3. Add a script to `package.json` like:
 
@@ -78,7 +78,7 @@ addModule
 : Boolean (`true`/`false`) - Should we generate module names based on the file names? - defaults to `true`
 
 escapeHTMLCharacters
-: Boolean (`true`/`false`) - Should we escape html characters (`<>/&"'`) in comments? - defaults to `false`
+: Boolean (`true`/`false`) - Should we escape html characters (`<>/&"'`) in comments? - defaults to `true`
 
 # Generating Documentation
 
@@ -93,6 +93,8 @@ npm run docs
 The default JSDocs template may not meet your needs. Here's a good list of templates that are available:
 
 https://cancerberosgx.github.io/jsdoc-templates-demo/demo/
+
+I recommend [clean-jsdoc-theme](https://github.com/ankitskvmdam/clean-jsdoc-theme)
 
 # Brightscript and Brighterscript
 
