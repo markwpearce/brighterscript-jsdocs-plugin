@@ -174,6 +174,7 @@ describe('convertBrighterscriptDocs', () => {
             end namespace
       `), `
             /**
+             * @global
              * @namespace Company
              */
             var Company = {};
@@ -228,26 +229,27 @@ describe('convertBrighterscriptDocs', () => {
             end namespace
       `), `
             /**
+             * @global
              * @namespace BGE
              */
             var BGE = {};
 
             /**
-             * @memberof! BGE
+             * @global
              * @namespace BGE/Debug
              * @alias BGE.Debug
              */
             BGE.Debug = {};
 
             /**
-             * @memberof! BGE/Debug
+             * @global
              * @namespace BGE/Debug/Alpha
              * @alias BGE.Debug.Alpha
              */
             BGE.Debug.Alpha = {};
 
             /**
-             * @memberof! BGE/Debug/Alpha
+             * @global
              * @namespace BGE/Debug/Alpha/Beta
              * @alias BGE.Debug.Alpha.Beta
              */
@@ -290,9 +292,9 @@ describe('convertBrighterscriptDocs', () => {
                  * @enum
                  */
                 var Colors = {
-                    Red: 0,
-                    Green: 1,
-                    Blue: 2,
+                Red: 0,
+                Green: 1,
+                Blue: 2,
                 };
             `);
         });
@@ -309,6 +311,7 @@ describe('convertBrighterscriptDocs', () => {
                 end namespace
             `), `
                 /**
+                 * @global
                  * @namespace alpha
                  */
                 var alpha = {};
@@ -320,9 +323,43 @@ describe('convertBrighterscriptDocs', () => {
                  * @enum
                  */
                 alpha.Colors = {
-                    Red: 0,
-                    Green: 1,
-                    Blue: 2,
+                Red: 0,
+                Green: 1,
+                Blue: 2,
+                };
+            `);
+        });
+
+        it('creates jsdoc for enums with member comments', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' Some colors
+                enum Colors
+                    ' ruby
+                    Red = 0
+                    ' emerald
+                    Green = 1
+                    ' sapphire
+                    Blue = 2
+                end enum
+            `), `
+                /**
+                 * Some colors
+                 * @readonly
+                 * @enum
+                 */
+                var Colors = {
+                /**
+                 * ruby
+                 */
+                Red: 0,
+                /**
+                 * emerald
+                 */
+                Green: 1,
+                /**
+                 * sapphire
+                 */
+                Blue: 2,
                 };
             `);
         });
@@ -385,6 +422,7 @@ describe('convertBrighterscriptDocs', () => {
                 end namespace
             `), `
                 /**
+                 * @global
                  * @namespace alpha
                  */
                 var alpha = {};
@@ -410,4 +448,46 @@ describe('convertBrighterscriptDocs', () => {
         });
     });
 
+    describe('constants', () => {
+        it('creates jsdoc for constants', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                    ' Test comment
+                    const MY_CONSTANT = "hello"
+                `), `
+                    /**
+                     * Test comment
+                     * @readonly
+                     * @constant
+                     * @default
+                     */
+                    var MY_CONSTANT = "hello";
+            `);
+        });
+
+        it('creates jsdoc for constants in namespaces', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                    namespace alpha
+                        ' Test comment
+                        const MY_CONSTANT = "hello"
+                    end namespace
+                `), `
+
+                    /**
+                     * @global
+                     * @namespace alpha
+                     */
+                    var alpha = {};
+
+                    /**
+                     * Test comment
+                     * @memberof! alpha
+                     * @readonly
+                     * @constant
+                     * @default
+                     */
+                    var MY_CONSTANT = "hello";
+                    alpha.MY_CONSTANT = MY_CONSTANT;
+            `);
+        });
+    });
 });

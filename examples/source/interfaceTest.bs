@@ -20,12 +20,12 @@ interface TestIFace
   function sayHelloTo(someone as string) as string
 end interface
 
-namespace Alpha
+namespace AlphaInterface
   ' a test interface
   interface TestIFaceInNamespace
     color as string
 
-    '
+    ' color is good
     function paint(thing as string) as integer
   end interface
 end namespace

@@ -6,7 +6,9 @@ end enum
 
 namespace Alpha
   enum Directions
+    ' up
     North = 0
+    ' down
     South = 1
     East = 2
     West = 3

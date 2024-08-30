@@ -232,6 +232,10 @@ function processFunction(comment: bs.CommentStatement | undefined, func: bs.Func
         isSub = func.func.functionType?.kind === bs.TokenKind.Sub;
     }
     commentLines.push(` * @function`);
+    let containerName = ''; // name of the class or interface that contains this function
+    if (bs.isMethodStatement(func) || bs.isInterfaceMethodStatement(func)) {
+        containerName = (func.parent as (bs.ClassStatement | bs.InterfaceStatement))?.getName?.(bs.ParseMode.BrighterScript);
+    }
 
     // Find the param line in the comments that match each param
     for (const param of params) {
@@ -331,10 +335,12 @@ function processFunction(comment: bs.CommentStatement | undefined, func: bs.Func
         totalOutput.push(returnLine);
         funcDeclaration = `${iFaceName}.prototype.${funcName} = function(${paramNameList.join(', ')}) { }; \n`;
     } else if (bs.isMethodStatement(func)) {
-        const className = (func.parent as bs.ClassStatement)?.getName?.(bs.ParseMode.BrighterScript);
+
         if (funcName.toLowerCase() === 'new') {
             totalOutput.push(' * @constructor');
-            totalOutput.push(` * @returns {${className}}`);
+            if (containerName) {
+                totalOutput.push(` * @returns {${containerName}}`);
+            }
             funcDeclaration = `constructor(${paramNameList.join(', ')}) { }; \n`;
         } else {
             totalOutput.push(returnLine);
@@ -487,7 +493,6 @@ function processNamespace(comment: bs.CommentStatement | undefined, namespace: b
         namespaceNames.push(namespaceNameChain);
     }
     let index = 0;
-    let previousNamespace = '';
     for (const namespaceName of namespaceNames) {
         let subNamespace = namespaceName;
         if (parentNamespaceName) {
@@ -495,16 +500,8 @@ function processNamespace(comment: bs.CommentStatement | undefined, namespace: b
         }
         if (!namespacesCreated.includes(subNamespace.toLowerCase())) {
             // have not created this namespace yet
-            /*if (getOptions().addModule) {
-                output.push(getModuleLineComment(subNamespace));
-            }*/
             let commentLines = convertCommentTextToJsDocLines(comment);
-            if (subNamespace !== moduleName) {
-                const memberOf = getMemberOf('', previousNamespace);
-                if (memberOf) {
-                    commentLines.push(memberOf);
-                }
-            }
+            commentLines.push(` * @global`);
             commentLines.push(` * @namespace ${subNamespace.replace(/\./g, '/')}`);
             if (subNamespace.includes('.')) {
                 commentLines.push(` * @alias ${subNamespace}`);
@@ -520,7 +517,6 @@ function processNamespace(comment: bs.CommentStatement | undefined, namespace: b
             }
             namespacesCreated.push(subNamespace.toLowerCase());
         }
-        previousNamespace = subNamespace;
         index++;
     }
     let totalNamespace = namespace.name;
@@ -549,10 +545,10 @@ function processEnum(comment: bs.CommentStatement | undefined, enumStatement: bs
     }
     for (const enumMember of enumStatement.body) {
         if (bs.isCommentStatement(enumMember)) {
-            output.push(...convertCommentTextToJsDocLines(enumMember));
+            output.push(...convertCommentTextToJsDocLines(enumMember), ' */');
             continue;
         }
-        output.push(`    ${enumMember.name}: ${enumMember.getValue()},`);
+        output.push(`${enumMember.name}: ${enumMember.getValue()},`);
     }
     output.push('};');
 
@@ -567,13 +563,18 @@ function processConst(comment: bs.CommentStatement | undefined, constStatement: 
         commentLines.push(memberOfLine);
     }
     commentLines.push(' * @readonly');
-    commentLines.push(' * @const');
+    commentLines.push(' * @constant');
+    commentLines.push(' * @default');
     commentLines.push(' */');
     output.push(...commentLines);
+    let valueOutput = {};
+    if (bs.isLiteralExpression(constStatement.value)) {
+        valueOutput = constStatement.value.token.text;
+    }
+    output.push(`var ${constStatement.name} = ${valueOutput};`);
+
     if (namespaceName) {
-        output.push(`${namespaceName}.${constStatement.name} = ${constStatement.value};`);
-    } else {
-        output.push(`var ${constStatement.name} = ${constStatement.value};`);
+        output.push(`${namespaceName}.${constStatement.name} = ${constStatement.name};`);
     }
 
     return output.join('\n');
@@ -690,9 +691,8 @@ export function convertBrighterscriptDocs(source: string, parseMode: bs.ParseMod
     // Add our module to the top of the file if it doesn't exist. If it does find out the name
 
     const output: string[] = [];
-    if (moduleName) {
+    if (moduleName && getOptions().addModule) {
         output.push(getModuleLineComment(moduleName));
-
     }
     output.push(processStatements(statements, moduleName));
 
