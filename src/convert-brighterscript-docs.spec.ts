@@ -129,150 +129,169 @@ describe('convertBrighterscriptDocs', () => {
       `);
     });
 
-
-    it('creats class comments', () => {
+    it('allows @ tags to go throygh', () => {
         expectOutput(cbd.convertBrighterscriptDocs(`
-            ' A representation of a person
-            class Person
-                ' The name of the person
-                name as string
-            end class
+            ' test tags
+            ' @sometag details
+            function whatever() as integer
+                return 123
+            end function
       `), `
             /**
-             * A representation of a person
-             * @property {string} name The name of the person
+             * test tags
+             * @sometag details
+             * @function
+             * @returns {integer}
              */
-            class Person {
-
-            }
+            function whatever () { };
       `);
     });
 
-    it('creates docs for namespaced class with methods', () => {
-        expectOutput(cbd.convertBrighterscriptDocs(`
-            namespace Company
-                ' A code monkey
-                class Programmer extends Employee
+    describe('classes', () => {
+        it('create class comments', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' A representation of a person
+                class Person
                     ' The name of the person
                     name as string
-                    '
-                    languages as roArray
+                end class
+            `), `
+                /**
+                 * A representation of a person
+                 * @property {string} name The name of the person
+                 */
+                class Person {
 
-                    'Create a new programmer
-                    sub new(name as string)
-                        m.name = name
-                    end sub
+                }
+            `);
+        });
 
-                    ' Write some code
-                    ' @param lines how many lines to write
-                    ' @param language what language to write in
-                    ' @returns the code
-                    function writeCode(lines as integer, language as string) as string
-                        return "Code written"
+        it('creates docs for namespaced class with methods', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                namespace Company
+                    ' A code monkey
+                    class Programmer extends Employee
+                        ' The name of the person
+                        name as string
+                        '
+                        languages as roArray
+
+                        'Create a new programmer
+                        sub new(name as string)
+                            m.name = name
+                        end sub
+
+                        ' Write some code
+                        ' @param lines how many lines to write
+                        ' @param language what language to write in
+                        ' @returns the code
+                        function writeCode(lines as integer, language as string) as string
+                            return "Code written"
+                        end function
+                    end class
+                end namespace
+            `), `
+                /**
+                 * @global
+                 * @namespace Company
+                 */
+                var Company = {};
+
+                /**
+                 * A code monkey
+                 * @extends Employee
+                 * @memberof! Company
+                 * @property {string} name The name of the person
+                 * @property {roArray} languages
+                 */
+                class Programmer extends Employee {
+
+                /**
+                 * Create a new programmer
+                 * @function
+                 * @param {string} name
+                 * @constructor
+                 * @returns {Company.Programmer}
+                 */
+                constructor(name) { };
+
+                /**
+                 * Write some code
+                 * @function
+                 * @param {integer} lines how many lines to write
+                 * @param {string} language what language to write in
+                 * @returns {string} the code
+                 */
+                writeCode (lines, language) { };
+
+                }
+
+                Company.Programmer = Programmer;
+            `);
+        });
+
+        it('outputs jsdoc for a deeper class', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' @module BGE
+                namespace BGE.Debug.Alpha.Beta
+
+                class DebugWindow extends BGE.UI.UiContainer
+
+                    function new(game as BGE.Game) as void
+                        super(game)
+                        m.backgroundRGBA = BGE.RGBAtoRGBA(128, 128, 128, 0.5)
+                        m.padding.set(10)
                     end function
                 end class
-            end namespace
-      `), `
-            /**
-             * @global
-             * @namespace Company
-             */
-            var Company = {};
 
-            /**
-             * A code monkey
-             * @extends Employee
-             * @memberof! Company
-             * @property {string} name The name of the person
-             * @property {roArray} languages
-             */
-            class Programmer extends Employee {
+                end namespace
+            `), `
+                /**
+                 * @global
+                 * @namespace BGE
+                 */
+                var BGE = {};
 
-            /**
-             * Create a new programmer
-             * @function
-             * @param {string} name
-             * @constructor
-             * @returns {Company.Programmer}
-             */
-            constructor(name) { };
+                /**
+                 * @global
+                 * @namespace BGE/Debug
+                 * @alias BGE.Debug
+                 */
+                BGE.Debug = {};
 
-            /**
-             * Write some code
-             * @function
-             * @param {integer} lines how many lines to write
-             * @param {string} language what language to write in
-             * @returns {string} the code
-             */
-            writeCode (lines, language) { };
+                /**
+                 * @global
+                 * @namespace BGE/Debug/Alpha
+                 * @alias BGE.Debug.Alpha
+                 */
+                BGE.Debug.Alpha = {};
 
-            }
+                /**
+                 * @global
+                 * @namespace BGE/Debug/Alpha/Beta
+                 * @alias BGE.Debug.Alpha.Beta
+                 */
+                BGE.Debug.Alpha.Beta = {};
 
-            Company.Programmer = Programmer;
-      `);
-    });
+                /**
+                 * @extends BGE.UI.UiContainer
+                 * @memberof! BGE/Debug/Alpha/Beta
+                 */
+                class DebugWindow extends BGE.UI.UiContainer {
 
-    it('outputs jsdoc for a deeper class', () => {
-        expectOutput(cbd.convertBrighterscriptDocs(`
-            ' @module BGE
-            namespace BGE.Debug.Alpha.Beta
+                /**
+                 * @function
+                 * @param {BGE.Game} game
+                 * @constructor
+                 * @returns {BGE.Debug.Alpha.Beta.DebugWindow}
+                 */
+                constructor(game) { };
 
-            class DebugWindow extends BGE.UI.UiContainer
+                }
 
-                function new(game as BGE.Game) as void
-                    super(game)
-                    m.backgroundRGBA = BGE.RGBAtoRGBA(128, 128, 128, 0.5)
-                    m.padding.set(10)
-                end function
-            end class
-
-            end namespace
-      `), `
-            /**
-             * @global
-             * @namespace BGE
-             */
-            var BGE = {};
-
-            /**
-             * @global
-             * @namespace BGE/Debug
-             * @alias BGE.Debug
-             */
-            BGE.Debug = {};
-
-            /**
-             * @global
-             * @namespace BGE/Debug/Alpha
-             * @alias BGE.Debug.Alpha
-             */
-            BGE.Debug.Alpha = {};
-
-            /**
-             * @global
-             * @namespace BGE/Debug/Alpha/Beta
-             * @alias BGE.Debug.Alpha.Beta
-             */
-            BGE.Debug.Alpha.Beta = {};
-
-            /**
-             * @extends BGE.UI.UiContainer
-             * @memberof! BGE/Debug/Alpha/Beta
-             */
-            class DebugWindow extends BGE.UI.UiContainer {
-
-            /**
-             * @function
-             * @param {BGE.Game} game
-             * @constructor
-             * @returns {BGE.Debug.Alpha.Beta.DebugWindow}
-             */
-            constructor(game) { };
-
-            }
-
-            BGE.Debug.Alpha.Beta.DebugWindow = DebugWindow;
-      `);
+                BGE.Debug.Alpha.Beta.DebugWindow = DebugWindow;
+            `);
+        });
     });
 
     describe('enums', () => {
