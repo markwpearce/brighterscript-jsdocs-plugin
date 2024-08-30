@@ -1,0 +1,31 @@
+' a test interface
+interface TestIFace
+  ' a test property
+  name as string
+  ' another test property
+  id as integer
+
+  ' test sub
+  sub noop()
+
+  ' A test function
+  '
+  ' @return {string}
+  function sayHello() as string
+
+  ' Says hello to someone
+  '
+  ' @param {string} someone to say hello to
+  ' @return {string} the greeting
+  function sayHelloTo(someone as string) as string
+end interface
+
+namespace Alpha
+  ' a test interface
+  interface TestIFaceInNamespace
+    color as string
+
+    '
+    function paint(thing as string) as integer
+  end interface
+end namespace

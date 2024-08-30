@@ -1,37 +1,68 @@
 {
-  "name": "brighterscript-jsdocs-plugin",
-  "version": "0.6.0",
-  "description": "Plugin For JSDoc that converts Brighterscript files into comments compatible with JSDoc",
-  "author": "Mark Pearce",
-  "scripts": {
-    "docs": "rm -rf docs && ./node_modules/.bin/jsdoc -c jsdoc.json -d docs",
-    "test": "sh ./scripts/test.sh"
-  },
-  "files": [
-    "convert-brighterscript-docs.js"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/markwpearce/brighterscript-jsdocs-plugin.git"
-  },
-  "license": "ISC",
-  "keywords": [
-    "brightscript",
-    "brighterscript",
-    "roku",
-    "jsdoc",
-    "jsdocs",
-    "brightscriptdoc"
-  ],
-  "bugs": {
-    "url": "https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues"
-  },
-  "homepage": "https://github.com/markwpearce/brighterscript-jsdocs-plugin",
-  "dependencies": {
-    "brighterscript": "^0.65.8",
-    "jsdoc": "^3.6.7"
-  },
-  "devDependencies": {
-    "braintree-jsdoc-template": "^3.3.0"
-  }
+    "name": "brighterscript-jsdocs-plugin",
+    "version": "0.7.0",
+    "description": "Plugin For JSDoc that converts Brighterscript files into comments compatible with JSDoc",
+    "author": "Mark Pearce",
+    "scripts": {
+        "preversion": "npm run build && npm run lint && npm run test",
+        "clean": "rm -rf dist",
+        "docs": "npm run build && rm -rf docs && ./node_modules/.bin/jsdoc -c jsdoc.json -d docs",
+        "lint": "eslint \"src/**\"",
+        "build": "npm run clean && tsc",
+        "test": "mocha",
+        "testdocs": "sh ./scripts/test.sh"
+    },
+    "files": [
+        "dist/convert-brighterscript-docs.js"
+    ],
+    "mocha": {
+        "spec": "src/**/*.spec.ts",
+        "require": [
+            "source-map-support/register",
+            "ts-node/register"
+        ],
+        "fullTrace": true,
+        "timeout": 2000,
+        "watchExtensions": [
+            "ts"
+        ]
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/markwpearce/brighterscript-jsdocs-plugin.git"
+    },
+    "license": "ISC",
+    "keywords": [
+        "brightscript",
+        "brighterscript",
+        "roku",
+        "jsdoc",
+        "jsdocs",
+        "brightscriptdoc"
+    ],
+    "bugs": {
+        "url": "https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues"
+    },
+    "homepage": "https://github.com/markwpearce/brighterscript-jsdocs-plugin",
+    "dependencies": {
+        "brighterscript": "^0.67.4",
+        "jsdoc": "^4.0.3"
+    },
+    "devDependencies": {
+        "@types/chai": "^4.1.2",
+        "@types/mocha": "^5.2.5",
+        "@types/node": "^22.5.1",
+        "@typescript-eslint/eslint-plugin": "^5.27.0",
+        "@typescript-eslint/parser": "^5.27.0",
+        "chai": "^4.2.0",
+        "clean-jsdoc-theme": "^4.3.0",
+        "eslint": "^8.16.0",
+        "eslint-import-resolver-typescript": "^3.6.1",
+        "eslint-plugin-import": "^2.29.1",
+        "eslint-plugin-jsdoc": "^39.3.6",
+        "eslint-plugin-no-only-tests": "2.6.0",
+        "mocha": "^9.1.3",
+        "ts-node": "^10.9.2",
+        "undent": "^0.1.0"
+    }
 }

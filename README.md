@@ -39,24 +39,24 @@ Example:
 
 ```jsonc
 {
-  "plugins": [
-    "plugins/markdown",
-    "./node_modules/brighterscript-jsdocs-plugin/convert-brighterscript-docs.js"
-  ],
-  "source": {
-    "include": [
-      "src" // directories with .bs/.brs files
+    "plugins": [
+        "plugins/markdown",
+        "./node_modules/brighterscript-jsdocs-plugin/dist/convert-brighterscript-docs.js"
     ],
-    "includePattern": ".+\\.br?s$"
-  },
-  "opts": {
-    "recurse": true,
-    "template": "node_modules/clean-jsdoc-theme", // or whatever template you've chosen - see below
-    "brighterscript-jsdocs-plugin": {
-      "addModule": true, // true by default - should we generate module names based on the file names?
-      "escapeHTMLCharacters": false // false by default - should we escape html characters (<>/&") in comments?
+    "source": {
+        "include": [
+            "src" // directories with .bs/.brs files
+        ],
+        "includePattern": ".+\\.br?s$"
+    },
+    "opts": {
+        "recurse": true,
+        "template": "node_modules/clean-jsdoc-theme", // or whatever template you've chosen - see below
+        "brighterscript-jsdocs-plugin": {
+            "addModule": true, // true by default - should we generate module names based on the file names?
+            "escapeHTMLCharacters": false // false by default - should we escape html characters (<>/&") in comments?
+        }
     }
-  }
 }
 ```
 

@@ -13,6 +13,24 @@
       "skipFiles": ["<node_internals>/**"],
       "type": "node",
       "sourceMaps": true
+    },
+    {
+      "name": "Debug Tests",
+      "type": "node",
+      "request": "launch",
+      "smartStep": false,
+      "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+      "args": [
+        "-r",
+        "ts-node/register",
+        "-r",
+        "source-map-support/register",
+        "./src/**/*.spec.ts",
+        "--timeout",
+        "500000"
+      ],
+      "cwd": "${workspaceRoot}",
+      "internalConsoleOptions": "openOnSessionStart"
     }
   ]
 }

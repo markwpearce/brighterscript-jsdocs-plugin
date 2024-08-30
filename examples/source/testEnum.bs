@@ -1,0 +1,14 @@
+enum Colors
+  Red = 0
+  Green = 1
+  Blue = 2
+end enum
+
+namespace Alpha
+  enum Directions
+    North = 0
+    South = 1
+    East = 2
+    West = 3
+  end enum
+end namespace
