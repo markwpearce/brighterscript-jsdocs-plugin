@@ -10,3 +10,4 @@ out/
 node_modules/
 docs/*
 dist
+convert-brighterscript-docs.js
