@@ -9,7 +9,7 @@
         "docs": "npm run build && rm -rf docs && ./node_modules/.bin/jsdoc -c jsdoc.json -d docs",
         "lint": "eslint \"src/**\"",
         "build": "npm run clean && tsc",
-        "prepublish": "npm run preversion && npm run build && cp ./dist/convert-brighterscript-docs.js ./",
+        "prepack": "npm run preversion && npm run build && cp ./dist/convert-brighterscript-docs.js ./",
         "test": "mocha",
         "testdocs": "sh ./scripts/test.sh"
     },
