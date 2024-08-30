@@ -14,7 +14,7 @@
         "testdocs": "sh ./scripts/test.sh"
     },
     "files": [
-        "dist/convert-brighterscript-docs.js"
+        "convert-brighterscript-docs.js"
     ],
     "mocha": {
         "spec": "src/**/*.spec.ts",
