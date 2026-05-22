@@ -8,7 +8,7 @@
     "opts": {
         "recurse": true,
         "readme": "README.md",
-        "template": "node_modules/clean-jsdoc-theme",
+        "template": "./node_modules/docdash",
         "brighterscript-jsdocs-plugin": {}
     }
 }
