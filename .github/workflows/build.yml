@@ -2,7 +2,7 @@ name: build
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-node@master
         with:
-          node-version: "18.20.4"
+          node-version: "22.22.2"
           architecture: "x64" # fix for macos-latest
       - run: npm install
       - run: npm run build
