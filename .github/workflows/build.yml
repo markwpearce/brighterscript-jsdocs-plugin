@@ -1,0 +1,24 @@
+name: build
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@master
+        with:
+          node-version: "18.20.4"
+          architecture: "x64" # fix for macos-latest
+      - run: npm install
+      - run: npm run build
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run testdocs
