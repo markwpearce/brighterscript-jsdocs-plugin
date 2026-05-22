@@ -10,8 +10,10 @@
         "lint": "eslint \"src/**\"",
         "build": "npm run clean && tsc",
         "prepack": "npm run preversion && npm run build && cp ./dist/convert-brighterscript-docs.js ./",
+        "release": "release-it",
         "test": "mocha",
-        "testdocs": "sh ./scripts/test.sh"
+        "testdocs": "sh ./scripts/test.sh",
+        "generate-tarball": "tar -czf dist/brighterscript-jsdocs-plugin-v$(node -p \"require('./package.json').version\").tgz dist/"
     },
     "files": [
         "convert-brighterscript-docs.js"
@@ -64,6 +66,7 @@
         "eslint-plugin-jsdoc": "^62.9.0",
         "eslint-plugin-no-only-tests": "2.6.0",
         "mocha": "^11.3.0",
+        "release-it": "^20.0.1",
         "source-map-support": "^0.5.21",
         "ts-node": "^10.9.2",
         "typescript": "^4.7.2",
