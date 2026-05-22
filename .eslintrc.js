@@ -105,6 +105,7 @@ module.exports = {
         'jsdoc/newline-after-description': 'off',
         'jsdoc/require-jsdoc': 'off',
         'jsdoc/require-returns-type': 'off',
+        'jsdoc/tag-lines': 'off',
         'array-bracket-newline': 'off',
         'array-element-newline': 'off',
         'array-type': 'off',

@@ -9,6 +9,8 @@
         "recurse": true,
         "readme": "README.md",
         "template": "./node_modules/docdash",
-        "brighterscript-jsdocs-plugin": {}
+        "brighterscript-jsdocs-plugin": {
+            "escapeHTMLCharacters": false
+        }
     }
 }

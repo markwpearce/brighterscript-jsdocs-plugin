@@ -22,14 +22,10 @@ Docs are output in docs folder.
 1. Install via NPM
 
 ```
-npm install brighterscript-jsdocs-plugin --save-dev
+npm install --save-dev brighterscript-jsdocs-plugin
 ```
 
-I recommend using a custom template. I like https://github.com/braintree/jsdoc-template:
-
-```
-npm install braintree-jsdoc-template --save-dev
-```
+I recommend using a [custom template](#templates).
 
 2. Configure
 
@@ -51,10 +47,11 @@ Example:
   },
   "opts": {
     "recurse": true,
+    "readme": "README.md", // Your README file to be rendered on the docs home page
     "template": "./node_modules/docdash", // or whatever template you've chosen - see below
     "brighterscript-jsdocs-plugin": {
       "addModule": true, // true by default - should we generate module names based on the file names?
-      "escapeHTMLCharacters": true, // true by default - should we escape html characters (<>/&") in comments?
+      "escapeHTMLCharacters": false, // false by default - should we escape html characters (<>/&") in comments?
     },
   },
 }
@@ -78,7 +75,7 @@ addModule
 : Boolean (`true`/`false`) - Should we generate module names based on the file names? - defaults to `true`
 
 escapeHTMLCharacters
-: Boolean (`true`/`false`) - Should we escape html characters (`<>/&"'`) in comments? - defaults to `true`
+: Boolean (`true`/`false`) - Should we escape html characters (`<>/&"'`) in comments? - defaults to `false`
 
 # Generating Documentation
 
@@ -88,11 +85,11 @@ Run the script to generate documentation! (Documentation is put in the `./docs/`
 npm run docs
 ```
 
-# Templates
+# <a name="templates"></a>Templates
 
 The default JSDocs template may not meet your needs. Here's a good list of templates that are available:
 
-https://gist.github.com/coolaj86/49d3d804b2883d763d5f8be4d4a0eb73
+[JSDoc 4 Templates](https://gist.github.com/coolaj86/49d3d804b2883d763d5f8be4d4a0eb73#file-jsdoc-template-themes-md)
 
 # Brightscript and Brighterscript
 
