@@ -12,14 +12,26 @@
         "forceConsistentCasingInFileNames": true,
         "experimentalDecorators": true,
         "preserveConstEnums": true,
-        "downlevelIteration": true,
         "noUnusedLocals": true,
         "allowSyntheticDefaultImports": true,
         "resolveJsonModule": true,
-        "lib": ["es2017", "es2019.array", "dom"]
+        "lib": [
+            "es2017",
+            "es2019.array",
+            "dom"
+        ],
+        "types": [
+            "node",
+            "mocha",
+            "chai"
+        ]
     },
-    "include": ["src/**/*.ts"],
-    "exclude": ["node_modules/**/*"],
+    "include": [
+        "src/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules/**/*"
+    ],
     "ts-node": {
         "transpileOnly": true
     }

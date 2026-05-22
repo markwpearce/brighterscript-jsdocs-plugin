@@ -31,7 +31,7 @@ function getOptions() {
     }
 
     if (pluginOpts.escapeHTMLCharacters === undefined || pluginOpts.escapeHTMLCharacters === null) {
-        pluginOpts.escapeHTMLCharacters = true;
+        pluginOpts.escapeHTMLCharacters = false;
     }
     return pluginOpts;
 }
@@ -470,7 +470,7 @@ function processClass(comment: bs.CommentStatement | undefined, klass: bs.ClassS
 }
 
 /**
- * Processes a namespace
+ * Processes a namespace.
  * Namespaces are recursive - they can contain other functions, classes or namespaces
  *
  * @param comment The comment that appeared above this namespace in bs/brs
@@ -479,7 +479,7 @@ function processClass(comment: bs.CommentStatement | undefined, klass: bs.ClassS
  * @param parentNamespaceName [parentNamespaceName=""] the namespace this namespace is in
  * @returns the jsdoc string for the namespace provided
  */
-function processNamespace(comment: bs.CommentStatement | undefined, namespace: bs.NamespaceStatement, moduleName = '', parentNamespaceName = '') {
+function processNamespace(comment: bs.CommentStatement | undefined, namespace: bs.NamespaceStatement, moduleName = '', parentNamespaceName = ''): string {
 
     const output: string[] = [];
     const namespaceParts = namespace.name.split('.');
@@ -637,7 +637,7 @@ function processInterface(comment: bs.CommentStatement | undefined, iface: bs.In
  * Namespaces are recursive - they can contain other functions, classes or namespaces
  *
  * @param statements an array of statements
- * @param [moduleName=""] the module name these statements are in
+ * @param moduleName [moduleName=""] the module name these statements are in
  * @param  namespaceName [namespaceName=""] the namespace these statements are in
  * @returns the jsdoc string for the statements provided
  */

@@ -22,14 +22,10 @@ Docs are output in docs folder.
 1. Install via NPM
 
 ```
-npm install brighterscript-jsdocs-plugin --save-dev
+npm install --save-dev brighterscript-jsdocs-plugin
 ```
 
-I recommend using a custom template. I like https://github.com/braintree/jsdoc-template:
-
-```
-npm install braintree-jsdoc-template --save-dev
-```
+I recommend using a [custom template](#templates).
 
 2. Configure
 
@@ -39,24 +35,25 @@ Example:
 
 ```jsonc
 {
-    "plugins": [
-        "plugins/markdown",
-        "./node_modules/brighterscript-jsdocs-plugin/convert-brighterscript-docs.js"
+  "plugins": [
+    "plugins/markdown",
+    "./node_modules/brighterscript-jsdocs-plugin/convert-brighterscript-docs.js",
+  ],
+  "source": {
+    "include": [
+      "src", // directories with .bs/.brs files
     ],
-    "source": {
-        "include": [
-            "src" // directories with .bs/.brs files
-        ],
-        "includePattern": ".+\\.br?s$"
+    "includePattern": ".+\\.br?s$",
+  },
+  "opts": {
+    "recurse": true,
+    "readme": "README.md", // Your README file to be rendered on the docs home page
+    "template": "./node_modules/docdash", // or whatever template you've chosen - see below
+    "brighterscript-jsdocs-plugin": {
+      "addModule": true, // true by default - should we generate module names based on the file names?
+      "escapeHTMLCharacters": false, // false by default - should we escape html characters (<>/&") in comments?
     },
-    "opts": {
-        "recurse": true,
-        "template": "node_modules/clean-jsdoc-theme", // or whatever template you've chosen - see below
-        "brighterscript-jsdocs-plugin": {
-            "addModule": true, // true by default - should we generate module names based on the file names?
-            "escapeHTMLCharacters": true // true by default - should we escape html characters (<>/&") in comments?
-        }
-    }
+  },
 }
 ```
 
@@ -78,7 +75,7 @@ addModule
 : Boolean (`true`/`false`) - Should we generate module names based on the file names? - defaults to `true`
 
 escapeHTMLCharacters
-: Boolean (`true`/`false`) - Should we escape html characters (`<>/&"'`) in comments? - defaults to `true`
+: Boolean (`true`/`false`) - Should we escape html characters (`<>/&"'`) in comments? - defaults to `false`
 
 # Generating Documentation
 
@@ -88,13 +85,11 @@ Run the script to generate documentation! (Documentation is put in the `./docs/`
 npm run docs
 ```
 
-# Templates
+# <a name="templates"></a>Templates
 
 The default JSDocs template may not meet your needs. Here's a good list of templates that are available:
 
-https://cancerberosgx.github.io/jsdoc-templates-demo/demo/
-
-I recommend [clean-jsdoc-theme](https://github.com/ankitskvmdam/clean-jsdoc-theme)
+[JSDoc 4 Templates](https://gist.github.com/coolaj86/49d3d804b2883d763d5f8be4d4a0eb73#file-jsdoc-template-themes-md)
 
 # Brightscript and Brighterscript
 
