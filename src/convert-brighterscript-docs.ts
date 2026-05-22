@@ -637,7 +637,7 @@ function processInterface(comment: bs.CommentStatement | undefined, iface: bs.In
  * Namespaces are recursive - they can contain other functions, classes or namespaces
  *
  * @param statements an array of statements
- * @param [moduleName=""] the module name these statements are in
+ * @param moduleName [moduleName=""] the module name these statements are in
  * @param  namespaceName [namespaceName=""] the namespace these statements are in
  * @returns the jsdoc string for the statements provided
  */
