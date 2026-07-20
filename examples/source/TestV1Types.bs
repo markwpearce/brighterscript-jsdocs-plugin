@@ -1,0 +1,45 @@
+' A thing that has an id
+interface HasId
+  id as string
+end interface
+
+' A thing that has a url
+interface HasUrl
+  url as string
+end interface
+
+' Format a value that might be a string or an integer
+' @param value the value to format
+function makePriceString(value as string or integer) as string
+  return "$" + value.ToStr()
+end function
+
+' Sum a typed array of integers
+' @param values the numbers to sum
+function sumIntegers(values as integer[]) as integer
+  total = 0
+  for each value in values
+    total += value
+  end for
+  return total
+end function
+
+' Get a url with the id from the given value appended as a query param
+' @param value something that has both an id and a url
+function getUrlWithQueryId(value as HasId and HasUrl) as string
+  return value.url + "?id=" + value.id
+end function
+
+' A person, who may have an integer or string id
+class Person
+  ' the person's id
+  id as string or integer
+
+  ' the person's nicknames
+  nicknames as string[]
+end class
+
+' Get everyone
+function getPeople() as Person[]
+  return []
+end function

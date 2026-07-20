@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: "22.22.2"
           architecture: "x64" # fix for macos-latest
-      - run: npm install
+      - run: npm ci
       - run: npm run build
       - run: npm run lint
       - run: npm run test

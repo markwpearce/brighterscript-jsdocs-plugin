@@ -509,4 +509,210 @@ describe('convertBrighterscriptDocs', () => {
             `);
         });
     });
+
+    describe('comment adjacency', () => {
+        it('does not attach a blank-line-separated comment to the following function', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' Not attached - there's a blank line below
+
+                function main()
+                    print("Hello, World!")
+                end function
+            `), `
+                /**
+                 * @function
+                 * @returns {dynamic}
+                 */
+                function main () { };
+            `);
+        });
+
+        it('does not attach a previous field\'s trailing same-line comment to the following field', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                class Person
+                    firstName as string ' the person's first name
+
+                    ' the person's last name
+                    lastName as string
+                end class
+            `), `
+                /**
+                 * @property {string} firstName
+                 * @property {string} lastName the person's last name
+                 */
+                class Person {
+
+                }
+            `);
+        });
+
+        it('attaches a comment before annotations/decorators to the function, not the decorator', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' Comments should go before annotations and decorators
+                '
+                ' @param {string} param1 A no op value
+                ' @return {string} whatever was included as param1
+                @someDecorator("func")
+                function funcWithDecorator(param1 as string) as string
+                    return param1
+                end function
+            `), `
+                /**
+                 * Comments should go before annotations and decorators
+                 *
+                 * @function
+                 * @param {string} param1 A no op value
+                 * @returns {string} whatever was included as param1
+                 */
+                function funcWithDecorator (param1) { };
+            `);
+        });
+
+        it('does not attach a trailing same-line comment on a previous field to a decorated method', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                class DecoratorsTestKlass
+                    property as float = 3.14 ' yum, pi!
+
+                    ' Member function comments come before decorators
+                    @someDecorator("method")
+                    function someFunc(num) as string
+                        return \`hello \${num}\`
+                    end function
+                end class
+            `), `
+                /**
+                 * @property {float} property
+                 */
+                class DecoratorsTestKlass {
+
+                /**
+                 * Member function comments come before decorators
+                 * @function
+                 * @param {dynamic} num
+                 * @returns {string}
+                 */
+                someFunc (num) { };
+
+                }
+            `);
+        });
+    });
+
+    describe('BrighterScript v1 types', () => {
+        it('creates a jsdoc union type for a union type param and return', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' Make a price string
+                ' @param value the value
+                function makePriceString(value as string or integer) as string or boolean
+                    return "$" + value.ToStr()
+                end function
+            `), `
+                /**
+                 * Make a price string
+                 * @function
+                 * @param {(string|integer)} value the value
+                 * @returns {(string|boolean)}
+                 */
+                function makePriceString (value) { };
+            `);
+        });
+
+        it('falls back to dynamic for an intersection type param, since JSDoc has no intersection syntax', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                interface HasId
+                    id as string
+                end interface
+
+                interface HasUrl
+                    url as string
+                end interface
+
+                ' Get the URL with the given id appended as a query param
+                function getUrlWithQueryId(value as HasId and HasUrl) as string
+                    return value.url
+                end function
+            `), `
+                /**
+                 * @interface
+                 * @property {string} id
+                 */
+                function HasId() { };
+
+                /**
+                 * @interface
+                 * @property {string} url
+                 */
+                function HasUrl() { };
+
+                /**
+                 * Get the URL with the given id appended as a query param
+                 * @function
+                 * @param {dynamic} value
+                 * @returns {string}
+                 */
+                function getUrlWithQueryId (value) { };
+            `);
+        });
+
+        it('creates a jsdoc array type for a typed array param and return', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' Sum some numbers
+                ' @param values the numbers to sum
+                function sum(values as integer[]) as integer
+                    return 0
+                end function
+            `), `
+                /**
+                 * Sum some numbers
+                 * @function
+                 * @param {Array.<integer>} values the numbers to sum
+                 * @returns {integer}
+                 */
+                function sum (values) { };
+            `);
+        });
+
+        it('creates a jsdoc array type using the custom type name for a typed array of a class', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                class Person
+                end class
+
+                ' Gets everyone
+                function getPeople() as Person[]
+                    return []
+                end function
+            `), `
+                /**
+                 */
+                class Person {
+
+                }
+
+                /**
+                 * Gets everyone
+                 * @function
+                 * @returns {Array.<Person>}
+                 */
+                function getPeople () { };
+            `);
+        });
+
+        it('creates a jsdoc union type for a class field with a union type', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' A person
+                class Person
+                    ' the id
+                    id as string or integer
+                end class
+            `), `
+                /**
+                 * A person
+                 * @property {(string|integer)} id the id
+                 */
+                class Person {
+
+                }
+            `);
+        });
+    });
 });

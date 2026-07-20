@@ -16,6 +16,8 @@ const escapeCharEntities = {
     '\'': '&apos;'
 };
 
+const typeGetOptions: bs.GetTypeOptions = { flags: bs.SymbolTypeFlag.typetime };
+
 
 interface PluginOptions {
     addModule?: boolean;
@@ -46,25 +48,41 @@ export function resetCreatedCache() {
 
 let parserLines: string[] = [];
 
-
-/**
- * Groups Statements into comments, functions, classes and namespaces
- */
-function getComments(statements: bs.Statement[]) {
-    const comments: bs.CommentStatement[] = statements.filter(bs.isCommentStatement);
-    return comments;
-}
-
 /**
  * Gets the type name for the given type
  * Defaults to "dynamic" if it can't decide
+ * Handles BrighterScript v1 compound types (unions, intersections) and typed arrays,
+ * since those collapse to generic runtime types (`dynamic`/`object`) via toTypeString()
  */
-function getTypeName(type?: { name?: string; toTypeString?: () => string }) {
+function getTypeName(type?: bs.BscType): string {
     if (!type) {
         return 'dynamic';
     }
-    if (bs.isCustomType(type)) {
+    if (bs.isArrayType(type)) {
+        // Prefer the raw, unresolved element type over `defaultType`, since resolving
+        // an element type that references another class/interface (eg. `Person[]`) without a
+        // full Program forces it to `dynamic` instead of leaving it as an inspectable ReferenceType
+        const elementType = type.innerTypes?.length === 1 ? type.innerTypes[0] : type.defaultType;
+        return `Array.<${getTypeName(elementType)}>`;
+    }
+    if (bs.isUnionType(type)) {
+        const memberNames = (type.types ?? []).map(memberType => getTypeName(memberType));
+        return `(${memberNames.join('|')})`;
+    }
+    if (bs.isIntersectionType(type)) {
+        // JSDoc's (Closure-style) type grammar has no intersection-type operator, only union (`|`),
+        // so an `&`-joined type string here would parse as a real union member and crash real jsdoc
+        // generation. Fall back to `dynamic`, matching how BrighterScript itself transpiles this type.
+        return 'dynamic';
+    }
+    if (bs.isClassType(type) || bs.isInterfaceType(type) || bs.isEnumType(type) || bs.isComponentType(type) || bs.isNamespaceType(type)) {
         return type.name;
+    }
+    if (bs.isReferenceType(type)) {
+        // Type names that reference another class/interface/namespace can't be resolved to a concrete
+        // type without a full Program (this plugin only lexes/parses one file at a time), so BrighterScript
+        // hands back an unresolved ReferenceType. Its `fullName` is the name as written in the source.
+        return type.fullName;
     }
     if (type.toTypeString) {
         return type.toTypeString();
@@ -72,6 +90,67 @@ function getTypeName(type?: { name?: string; toTypeString?: () => string }) {
     return 'dynamic';
 }
 
+/**
+ * Gets the node whose leading trivia holds the doc comment for a statement.
+ * If the statement has annotations, the comment appears before the first annotation,
+ * not before the statement itself.
+ */
+function getCommentTriviaOwner(node: bs.AstNode): bs.AstNode {
+    const annotations = (node as { annotations?: bs.AnnotationExpression[] }).annotations;
+    if (annotations && annotations.length > 0) {
+        return annotations[0];
+    }
+    return node;
+}
+
+/**
+ * Gets the raw text (including the leading `'`/`REM` marker) of each comment line
+ * directly preceding the given AST node.
+ *
+ * `leadingTrivia` returns every comment since the previous real token, which can include
+ * unrelated blocks separated by a blank line, or another statement's trailing same-line comment.
+ * Only the contiguous run of comment lines immediately (no gap) above the node counts as its
+ * doc comment - matching the adjacency BrightScriptDoc comments have always required.
+ */
+function getCommentLines(node?: bs.AstNode): string[] {
+    if (!node) {
+        return [];
+    }
+    const owner = getCommentTriviaOwner(node);
+    const trivia = owner.leadingTrivia ?? [];
+    const commentTokens = trivia.filter(token => token.kind === bs.TokenKind.Comment);
+    if (!commentTokens.length) {
+        return [];
+    }
+
+    let startIndex = commentTokens.length - 1;
+    for (let i = commentTokens.length - 2; i >= 0; i--) {
+        const currentLine = commentTokens[i].location?.range?.start?.line;
+        const nextLine = commentTokens[i + 1].location?.range?.start?.line;
+        if (currentLine === undefined || nextLine === undefined || currentLine !== nextLine - 1) {
+            break;
+        }
+        startIndex = i;
+    }
+    const contiguousCommentTokens = commentTokens.slice(startIndex);
+
+    const lastCommentLine = contiguousCommentTokens[contiguousCommentTokens.length - 1].location?.range?.start?.line;
+    const ownerStartLine = owner.location?.range?.start?.line;
+    if (lastCommentLine === undefined || ownerStartLine === undefined || lastCommentLine + 1 !== ownerStartLine) {
+        return [];
+    }
+
+    return contiguousCommentTokens.map(token => token.text);
+}
+
+/**
+ * Gets the stripped text (marker removed) of just the first comment line preceding the given node
+ * Used for one-line descriptions, eg. class/interface field descriptions
+ */
+function getSingleLineComment(node?: bs.AstNode): string {
+    const [firstLine] = getCommentLines(node);
+    return firstLine ? firstLine.replace(bsMeaningfulCommentRegex, '$1') : '';
+}
 
 /**
  * Helper to clean up param or return description strings
@@ -89,28 +168,6 @@ function paramOrReturnDescriptionHelper(desc = '') {
         return desc;
     }
     return '';
-}
-
-/**
- * Finds the comment that ends the line above the given statement
- * If the statement has annotations, the comment should be BEFORE the annotations
- *
- * @param comments List of comments to search
- * @param  stmt The statement in question
- * @returns  the correct comment, if found, otherwise undefined
- */
-function getCommentForStatement(comments: bs.CommentStatement[], stmt: bs.Statement) {
-    return comments.find((comment) => {
-        const commentEndLine = comment.range?.end.line;
-        let targetStartLine = stmt.range?.start.line;
-        if (stmt.annotations && stmt.annotations.length > 0) {
-            targetStartLine = stmt.annotations[0].range.start.line;
-        }
-        if (!commentEndLine) {
-            return false;
-        }
-        return commentEndLine + 1 === targetStartLine || commentEndLine === stmt.range?.start.line;
-    });
 }
 
 function getMemberOf(moduleName = '', namespaceName = '') {
@@ -148,88 +205,52 @@ function escapeHTMLCharacters(line: string) {
 
 
 /**
- * Convert a comment statement text to Js Doc Lines
+ * Convert a node's leading doc comment to Js Doc Lines
  * This will return a string[] with each line of a block comment
  * But - it does not include comment closing tag (ie. asterisk-slash)
  *
  * @returns Array of comment lines in JSDoc format -
  */
-function convertCommentTextToJsDocLines(comment?: bs.CommentStatement) {
-    const commentLines = ['/**'];
-    if (comment?.text) {
-        // Replace brighterscript comment format with jsdoc - eg.
-        //   '  Comment here
-        // to
-        //  * Comment here
-        commentLines.push(...comment.text.split('\n').map((line, i) => {
-            return line.replace(bsMeaningfulCommentRegex, '$1');
-        }).map(line => line.trim())
-            .filter((line) => {
-                return !line.includes('@module');
-            }).map((line, i, lines) => {
-                if (i === 0) {
-                    line = line.replace(jsCommentStartRegex, '$1');
-                }
-                line = line.replace(/\*+\/\s*/g, '');
-                if (getOptions().escapeHTMLCharacters) {
-                    line = escapeHTMLCharacters(line);
-                }
-                return ' * ' + line;
-            }));
-    }
-    return commentLines;
-}
-
-/**
- * Helper function to display a statement for debugging
- * (Not used)
- */
-export function displayStatement(stmt: bs.Statement) {
-    if (stmt instanceof bs.CommentStatement) {
-        console.log(`Comment`);
-    } else if (stmt instanceof bs.FunctionStatement) {
-        console.log(`Function`);
-    } else if (stmt instanceof bs.ClassStatement) {
-        console.log(`Class`);
-    } else if (stmt instanceof bs.NamespaceStatement) {
-        console.log(`Namespace`);
-    } else if (stmt instanceof bs.MethodStatement) {
-        console.log(`Method`);
-    } else if (stmt instanceof bs.FieldStatement) {
-        console.log(`Field`);
-    } else if (stmt.constructor) {
-        console.log(`${stmt.constructor.toString()}`);
-    }
-    if ((stmt as any).text) {
-        console.log((stmt as any).text);
-    }
-    if ((stmt as any).tokens.text) {
-        console.log((stmt as any).tokens.text);
-    }
-    console.log(`Range:`, stmt.range);
+function convertCommentTextToJsDocLines(commentLines: string[] = []) {
+    const output = ['/**'];
+    output.push(...commentLines.map(line => {
+        return line.replace(bsMeaningfulCommentRegex, '$1');
+    }).map(line => line.trim())
+        .filter((line) => {
+            return !line.includes('@module');
+        }).map((line, i) => {
+            if (i === 0) {
+                line = line.replace(jsCommentStartRegex, '$1');
+            }
+            line = line.replace(/\*+\/\s*/g, '');
+            if (getOptions().escapeHTMLCharacters) {
+                line = escapeHTMLCharacters(line);
+            }
+            return ' * ' + line;
+        }));
+    return output;
 }
 
 /**
  * Processes a function or a class method
  * For class methods, the "new()" function is outputed as "constructor()"
  *
- * @param comment The comment appearing above this function in bs/brs code
  * @param func the actual function or class method
  * @param moduleName [moduleName=""] the module name this function is in
  * @param namespaceName [namespaceName=""] the namespace this function is in
  * @returns the jsdoc string for the function provided
  */
-function processFunction(comment: bs.CommentStatement | undefined, func: bs.FunctionStatement | bs.InterfaceMethodStatement | bs.MethodStatement, moduleName = '', namespaceName = '') {
+function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatement | bs.MethodStatement, moduleName = '', namespaceName = '') {
     const output: string[] = [];
-    let commentLines = convertCommentTextToJsDocLines(comment);
+    let commentLines = convertCommentTextToJsDocLines(getCommentLines(func));
     const paramNameList: string[] = [];
     const params = bs.isInterfaceMethodStatement(func) ? func.params : func.func.parameters;
-    let returnType = bs.isInterfaceMethodStatement(func) ? func.returnType : func.func.returnType;
+    let returnTypeExpression = bs.isInterfaceMethodStatement(func) ? func.returnTypeExpression : func.func.returnTypeExpression;
     let isSub = false;
     if (bs.isInterfaceMethodStatement(func)) {
         isSub = func.tokens.functionType?.kind === bs.TokenKind.Sub;
     } else {
-        isSub = func.func.functionType?.kind === bs.TokenKind.Sub;
+        isSub = func.func.tokens.functionType?.kind === bs.TokenKind.Sub;
     }
     commentLines.push(` * @function`);
     let containerName = ''; // name of the class or interface that contains this function
@@ -239,9 +260,9 @@ function processFunction(comment: bs.CommentStatement | undefined, func: bs.Func
 
     // Find the param line in the comments that match each param
     for (const param of params) {
-        let paramName = param.name.text;
+        let paramName = param.tokens.name.text;
         paramNameList.push(paramName);
-        let paramType = getTypeName(param.type);
+        let paramType = getTypeName(param.getType(typeGetOptions));
         let paramDescription = '';
 
         // remove @param lines for the current param
@@ -275,9 +296,9 @@ function processFunction(comment: bs.CommentStatement | undefined, func: bs.Func
         });
 
         let paramLine = ` * @param {${paramType}} `;
-        if (param.defaultValue?.range) {
-            let start = param.defaultValue.range.start;
-            let end = param.defaultValue.range.end;
+        if (param.defaultValue?.location?.range) {
+            let start = param.defaultValue.location.range.start;
+            let end = param.defaultValue.location.range.end;
             let defaultValue = parserLines[start.line].slice(start.character, end.character);
             paramLine += `[${paramName}=${defaultValue}]`;
         } else {
@@ -292,16 +313,16 @@ function processFunction(comment: bs.CommentStatement | undefined, func: bs.Func
     }
 
     if (bs.isMethodStatement(func)) {
-        if (func.name.text.startsWith('_') || func.accessModifier?.kind === bs.TokenKind.Private) {
+        if (func.tokens.name.text.startsWith('_') || func.accessModifier?.kind === bs.TokenKind.Private) {
             output.push(' * @access private');
         } else if (func.accessModifier?.kind === bs.TokenKind.Protected) {
             output.push(' * @access protected');
         }
-        if (func.override) {
+        if (func.tokens.override) {
             output.push(` * @override`);
         }
     }
-    const returnTypeString = isSub ? 'void' : getTypeName(returnType);
+    const returnTypeString = isSub ? 'void' : getTypeName(returnTypeExpression?.getType(typeGetOptions));
     let returnLine = ` * @returns {${returnTypeString}}`;
     // Find the return line in the comments
     for (let i = 0; i < commentLines.length; i++) {
@@ -328,7 +349,7 @@ function processFunction(comment: bs.CommentStatement | undefined, func: bs.Func
         totalOutput.push(memberLine);
     }
 
-    const funcName = bs.isInterfaceMethodStatement(func) ? func.tokens.name.text : func.name.text;
+    const funcName = bs.isInterfaceMethodStatement(func) ? func.tokens.name.text : func.tokens.name.text;
     let funcDeclaration = `function ${funcName} (${paramNameList.join(', ')}) { }; \n`;
     if (bs.isInterfaceMethodStatement(func)) {
         const iFaceName = (func.parent as bs.InterfaceStatement)?.name;
@@ -365,42 +386,33 @@ function processFunction(comment: bs.CommentStatement | undefined, func: bs.Func
  * These are added as property tags in the class's jsdoc comment
  * Private fields are ignored
  *
- * @param {bs.CommentStatement} comment the comment in the line above this field
- * @param {bs.FieldStatement} field the field to process
- * @returns {string} the property tag for the class this field is in
+ * @param field the field to process
+ * @returns the property tag for the class this field is in
  */
-function processClassField(comment: bs.CommentStatement | undefined, field: bs.FieldStatement) {
-    if (field.accessModifier?.kind === bs.TokenKind.Private) {
+function processClassField(field: bs.FieldStatement) {
+    if (field.tokens.accessModifier?.kind === bs.TokenKind.Private) {
         return '';
     }
-    if (!field.name) {
-        return '';
-    }
-    let description = '';
-    if (comment) {
-        description = comment.text.replace(bsMeaningfulCommentRegex, '$1');
-    }
-    return ` * @property {${getTypeName(field.getType())}} ${field.name.text} ${description} `;
-}
-
-/**
- * Processed a Class Field
- * These are added as property tags in the class's jsdoc comment
- * Private fields are ignored
- *
- * @param {bs.CommentStatement} comment the comment in the line above this field
- * @param {bs.FieldStatement} field the field to process
- * @returns {string} the property tag for the class this field is in
- */
-function processInterfaceField(comment: bs.CommentStatement | undefined, field: bs.InterfaceFieldStatement) {
     if (!field.tokens.name) {
         return '';
     }
-    let description = '';
-    if (comment) {
-        description = comment.text.replace(bsMeaningfulCommentRegex, '$1');
+    const description = getSingleLineComment(field);
+    return ` * @property {${getTypeName(field.getType(typeGetOptions))}} ${field.tokens.name.text} ${description} `;
+}
+
+/**
+ * Processed an Interface Field
+ * These are added as property tags in the interface's jsdoc comment
+ *
+ * @param field the field to process
+ * @returns the property tag for the interface this field is in
+ */
+function processInterfaceField(field: bs.InterfaceFieldStatement) {
+    if (!field.tokens.name) {
+        return '';
     }
-    return ` * @property {${field.tokens.type.text}} ${field.tokens.name.text} ${description} `;
+    const description = getSingleLineComment(field);
+    return ` * @property {${getTypeName(field.getType(typeGetOptions))}} ${field.tokens.name.text} ${description} `;
 }
 
 
@@ -409,17 +421,15 @@ function processInterfaceField(comment: bs.CommentStatement | undefined, field: 
  * Classes can have member fields (properties or member methods)
  * Note: the new() method is renamed to constructor()
  *
- * @param comment The comment that appeared above this class in bs/brs
  * @param klass the actual class statement
  * @param moduleName [moduleName=""] the module name this class is in
  * @param namespaceName [namespaceName=""] the namespace this class is in
  * @returns {string} the jsdoc string for the class provided
  */
-function processClass(comment: bs.CommentStatement | undefined, klass: bs.ClassStatement, moduleName = '', namespaceName = '') {
+function processClass(klass: bs.ClassStatement, moduleName = '', namespaceName = '') {
     const output: string[] = [];
 
-    let commentLines = convertCommentTextToJsDocLines(comment);
-    const klassComments = getComments(klass.body);
+    let commentLines = convertCommentTextToJsDocLines(getCommentLines(klass));
 
     let extendsLine = ''; let parentName = '';
     if (klass.parentClassName) {
@@ -443,14 +453,13 @@ function processClass(comment: bs.CommentStatement | undefined, klass: bs.ClassS
         commentLines.push(memberOfLine);
     }
     klass.fields.forEach(field => {
-        const fieldComment = getCommentForStatement(klassComments, field);
-        commentLines.push(processClassField(fieldComment, field));
+        commentLines.push(processClassField(field));
     });
 
     commentLines.push(' */');
     output.push(...commentLines);
 
-    const klassName = klass.name.text;
+    const klassName = klass.tokens.name.text;
     if (parentName) {
         output.push(`class ${klassName} extends ${parentName} {\n`);
     } else {
@@ -458,8 +467,7 @@ function processClass(comment: bs.CommentStatement | undefined, klass: bs.ClassS
     }
 
     klass.methods.forEach(method => {
-        const methodComment = getCommentForStatement(klassComments, method);
-        output.push(processFunction(methodComment, method));
+        output.push(processFunction(method));
     });
 
     output.push('}\n');
@@ -473,13 +481,12 @@ function processClass(comment: bs.CommentStatement | undefined, klass: bs.ClassS
  * Processes a namespace.
  * Namespaces are recursive - they can contain other functions, classes or namespaces
  *
- * @param comment The comment that appeared above this namespace in bs/brs
  * @param namespace the actual namespace statement
  * @param moduleName [moduleName=""] the module name this namespace is in
  * @param parentNamespaceName [parentNamespaceName=""] the namespace this namespace is in
  * @returns the jsdoc string for the namespace provided
  */
-function processNamespace(comment: bs.CommentStatement | undefined, namespace: bs.NamespaceStatement, moduleName = '', parentNamespaceName = ''): string {
+function processNamespace(namespace: bs.NamespaceStatement, moduleName = '', parentNamespaceName = ''): string {
 
     const output: string[] = [];
     const namespaceParts = namespace.name.split('.');
@@ -500,7 +507,7 @@ function processNamespace(comment: bs.CommentStatement | undefined, namespace: b
         }
         if (!namespacesCreated.includes(subNamespace.toLowerCase())) {
             // have not created this namespace yet
-            let commentLines = convertCommentTextToJsDocLines(comment);
+            let commentLines = convertCommentTextToJsDocLines(getCommentLines(namespace));
             commentLines.push(` * @global`);
             commentLines.push(` * @namespace ${subNamespace.replace(/\./g, '/')}`);
             if (subNamespace.includes('.')) {
@@ -527,9 +534,9 @@ function processNamespace(comment: bs.CommentStatement | undefined, namespace: b
     return output.join('\n');
 }
 
-function processEnum(comment: bs.CommentStatement | undefined, enumStatement: bs.EnumStatement, moduleName = '', namespaceName = '') {
+function processEnum(enumStatement: bs.EnumStatement, moduleName = '', namespaceName = '') {
     const output: string[] = [];
-    let commentLines = convertCommentTextToJsDocLines(comment);
+    let commentLines = convertCommentTextToJsDocLines(getCommentLines(enumStatement));
     const memberOfLine = getMemberOf(moduleName, namespaceName);
     if (memberOfLine) {
         commentLines.push(memberOfLine);
@@ -543,10 +550,10 @@ function processEnum(comment: bs.CommentStatement | undefined, enumStatement: bs
     } else {
         output.push(`var ${enumStatement.name} = {`);
     }
-    for (const enumMember of enumStatement.body) {
-        if (bs.isCommentStatement(enumMember)) {
-            output.push(...convertCommentTextToJsDocLines(enumMember), ' */');
-            continue;
+    for (const enumMember of enumStatement.getMembers()) {
+        const memberCommentLines = getCommentLines(enumMember);
+        if (memberCommentLines.length) {
+            output.push(...convertCommentTextToJsDocLines(memberCommentLines), ' */');
         }
         output.push(`${enumMember.name}: ${enumMember.getValue()},`);
     }
@@ -555,9 +562,9 @@ function processEnum(comment: bs.CommentStatement | undefined, enumStatement: bs
     return output.join('\n');
 }
 
-function processConst(comment: bs.CommentStatement | undefined, constStatement: bs.ConstStatement, moduleName = '', namespaceName = '') {
+function processConst(constStatement: bs.ConstStatement, moduleName = '', namespaceName = '') {
     const output: string[] = [];
-    let commentLines = convertCommentTextToJsDocLines(comment);
+    let commentLines = convertCommentTextToJsDocLines(getCommentLines(constStatement));
     const memberOfLine = getMemberOf(moduleName, namespaceName);
     if (memberOfLine) {
         commentLines.push(memberOfLine);
@@ -569,7 +576,7 @@ function processConst(comment: bs.CommentStatement | undefined, constStatement: 
     output.push(...commentLines);
     let valueOutput = {};
     if (bs.isLiteralExpression(constStatement.value)) {
-        valueOutput = constStatement.value.token.text;
+        valueOutput = constStatement.value.tokens.value.text;
     }
     output.push(`var ${constStatement.name} = ${valueOutput};`);
 
@@ -580,11 +587,10 @@ function processConst(comment: bs.CommentStatement | undefined, constStatement: 
     return output.join('\n');
 }
 
-function processInterface(comment: bs.CommentStatement | undefined, iface: bs.InterfaceStatement, moduleName = '', namespaceName = '') {
+function processInterface(iface: bs.InterfaceStatement, moduleName = '', namespaceName = '') {
     const output: string[] = [];
 
-    let commentLines = convertCommentTextToJsDocLines(comment);
-    const comments = getComments(iface.body);
+    let commentLines = convertCommentTextToJsDocLines(getCommentLines(iface));
     const ifaceName = iface.name;
     commentLines.push(` * @interface`);
     let extendsLine = ''; let parentName = '';
@@ -610,8 +616,7 @@ function processInterface(comment: bs.CommentStatement | undefined, iface: bs.In
     }
     for (const field of iface.fields) {
         if (bs.isInterfaceFieldStatement(field)) {
-            const fieldComment = getCommentForStatement(comments, field);
-            commentLines.push(processInterfaceField(fieldComment, field as bs.InterfaceFieldStatement));
+            commentLines.push(processInterfaceField(field));
         }
     }
     commentLines.push(' */');
@@ -620,8 +625,7 @@ function processInterface(comment: bs.CommentStatement | undefined, iface: bs.In
 
     for (const method of iface.methods) {
         if (bs.isInterfaceMethodStatement(method)) {
-            const methodComment = getCommentForStatement(comments, method);
-            output.push(processFunction(methodComment, method, '', ''));
+            output.push(processFunction(method, '', ''));
         }
     }
 
@@ -644,33 +648,20 @@ function processInterface(comment: bs.CommentStatement | undefined, iface: bs.In
 function processStatements(statements: bs.Statement[], moduleName = '', namespaceName = '') {
 
     const output: string[] = [];
-    const comments = getComments(statements);
 
     for (const statement of statements) {
         if (bs.isFunctionStatement(statement)) {
-            const comment = getCommentForStatement(comments, statement);
-            const functionOutput = processFunction(comment, statement, moduleName, namespaceName);
-            output.push(functionOutput);
+            output.push(processFunction(statement, moduleName, namespaceName));
         } else if (bs.isClassStatement(statement)) {
-            const comment = getCommentForStatement(comments, statement);
-            const classOutput = processClass(comment, statement, moduleName, namespaceName);
-            output.push(classOutput);
+            output.push(processClass(statement, moduleName, namespaceName));
         } else if (bs.isNamespaceStatement(statement)) {
-            const comment = getCommentForStatement(comments, statement);
-            const namespaceOutput = processNamespace(comment, statement, moduleName, namespaceName);
-            output.push(namespaceOutput);
+            output.push(processNamespace(statement, moduleName, namespaceName));
         } else if (bs.isEnumStatement(statement)) {
-            const comment = getCommentForStatement(comments, statement);
-            const enumOutput = processEnum(comment, statement, moduleName, namespaceName);
-            output.push(enumOutput);
+            output.push(processEnum(statement, moduleName, namespaceName));
         } else if (bs.isConstStatement(statement)) {
-            const comment = getCommentForStatement(comments, statement);
-            const enumOutput = processConst(comment, statement, moduleName, namespaceName);
-            output.push(enumOutput);
+            output.push(processConst(statement, moduleName, namespaceName));
         } else if (bs.isInterfaceStatement(statement)) {
-            const comment = getCommentForStatement(comments, statement);
-            const ifaceOutput = processInterface(comment, statement, moduleName, namespaceName);
-            output.push(ifaceOutput);
+            output.push(processInterface(statement, moduleName, namespaceName));
         }
     }
 
