@@ -382,6 +382,24 @@ describe('convertBrighterscriptDocs', () => {
                 };
             `);
         });
+
+        it('normalizes hex literals for enum member values', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                enum Colors
+                    Black = &h000000FF
+                    White = &hFFFFFFFF
+                end enum
+            `), `
+                /**
+                 * @readonly
+                 * @enum
+                 */
+                var Colors = {
+                Black: 0x000000FF,
+                White: 0xFFFFFFFF,
+                };
+            `);
+        });
     });
 
     describe('interfaces', () => {
@@ -506,6 +524,19 @@ describe('convertBrighterscriptDocs', () => {
                      */
                     var MY_CONSTANT = "hello";
                     alpha.MY_CONSTANT = MY_CONSTANT;
+            `);
+        });
+
+        it('normalizes hex literals for constant values', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                    const MY_CONSTANT = &hFF0000FF
+                `), `
+                    /**
+                     * @readonly
+                     * @constant
+                     * @default
+                     */
+                    var MY_CONSTANT = 0xFF0000FF;
             `);
         });
     });
