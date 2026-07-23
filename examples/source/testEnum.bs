@@ -14,3 +14,10 @@ namespace Alpha
     West = 3
   end enum
 end namespace
+
+' ARGB colors, expressed as BrightScript hex literals
+enum ArgbColors
+  Black = &h000000FF
+  White = &hFFFFFFFF
+  TransparentRed = &hFF000080
+end enum
