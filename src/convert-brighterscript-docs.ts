@@ -18,6 +18,14 @@ const escapeCharEntities = {
 
 const typeGetOptions: bs.GetTypeOptions = { flags: bs.SymbolTypeFlag.typetime };
 
+/**
+ * Converts BrightScript hex literal tokens (`&hFF`) to valid JS literal syntax (`0xFF`) so
+ * jsdoc's parser doesn't choke on the raw BrightScript source text.
+ */
+function normalizeBrightScriptNumericLiteral(value: string): string {
+    return value.replace(/&([Hh])([0-9A-Fa-f]+)/g, '0x$2');
+}
+
 
 interface PluginOptions {
     addModule?: boolean;
@@ -555,7 +563,7 @@ function processEnum(enumStatement: bs.EnumStatement, moduleName = '', namespace
         if (memberCommentLines.length) {
             output.push(...convertCommentTextToJsDocLines(memberCommentLines), ' */');
         }
-        output.push(`${enumMember.name}: ${enumMember.getValue()},`);
+        output.push(`${enumMember.name}: ${normalizeBrightScriptNumericLiteral(enumMember.getValue())},`);
     }
     output.push('};');
 
@@ -576,7 +584,7 @@ function processConst(constStatement: bs.ConstStatement, moduleName = '', namesp
     output.push(...commentLines);
     let valueOutput = {};
     if (bs.isLiteralExpression(constStatement.value)) {
-        valueOutput = constStatement.value.tokens.value.text;
+        valueOutput = normalizeBrightScriptNumericLiteral(constStatement.value.tokens.value.text);
     }
     output.push(`var ${constStatement.name} = ${valueOutput};`);
 
