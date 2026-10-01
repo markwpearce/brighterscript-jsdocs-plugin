@@ -1,0 +1,10 @@
+' Moves an entity towards a target position
+' @param {object} entity the entity to move. It must have
+'   x and y properties
+' @param speed how far to move per second, which is capped
+'   at the entity's max speed
+' @return true if the entity reached the target
+'   during this move
+function moveTowards(entity as object, speed as float) as boolean
+  return false
+end function

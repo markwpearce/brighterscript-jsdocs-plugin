@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   Enum and const values containing BrightScript hex literals (`&hFF0000FF`) are now normalized to valid JS syntax (`0xFF0000FF`) before being emitted, instead of breaking jsdoc's parser ([#14](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/14))
 -   Class fields with an object literal default value (`foo = {}`) no longer crash with `this.getLookupTable is not a function` (fixed upstream in `brighterscript@1.0.0-alpha.56`) ([#17](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/17))
+-   Multi-line `@param` and `@returns` descriptions now stay with their tag instead of being appended to the function's description. Lines following one of those tags (up to the next tag or a blank comment line) are treated as part of its description ([#11](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/11))
 
 ### Added
 
