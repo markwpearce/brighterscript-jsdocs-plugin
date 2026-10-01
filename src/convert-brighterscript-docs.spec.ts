@@ -166,6 +166,23 @@ describe('convertBrighterscriptDocs', () => {
             `);
         });
 
+        it('does not crash on fields with an object literal default value', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                class Foo
+                    colliders as roAssociativeArray = {}
+                    other = {}
+                end class
+            `), `
+                /**
+                 * @property {roAssociativeArray} colliders
+                 * @property {object} other
+                 */
+                class Foo {
+
+                }
+            `);
+        });
+
         it('creates docs for namespaced class with methods', () => {
             expectOutput(cbd.convertBrighterscriptDocs(`
                 namespace Company

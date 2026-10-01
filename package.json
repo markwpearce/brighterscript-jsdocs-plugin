@@ -50,7 +50,7 @@
     },
     "homepage": "https://github.com/markwpearce/brighterscript-jsdocs-plugin",
     "dependencies": {
-        "brighterscript": "^1.0.0-alpha.52",
+        "brighterscript": "^1.0.0-alpha.56",
         "jsdoc": "^4.0.5"
     },
     "devDependencies": {
