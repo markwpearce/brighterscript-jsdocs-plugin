@@ -339,6 +339,46 @@ describe('convertBrighterscriptDocs', () => {
                 BGE.Debug.Alpha.Beta.DebugWindow = DebugWindow;
             `);
         });
+
+        it('does not repeat the parent name for nested namespaces', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                namespace BGE
+                    namespace Math.Inner
+                        function foo()
+                        end function
+                    end namespace
+                end namespace
+            `), `
+                /**
+                 * @global
+                 * @namespace BGE
+                 */
+                var BGE = {};
+
+                /**
+                 * @global
+                 * @namespace BGE/Math
+                 * @alias BGE.Math
+                 */
+                BGE.Math = {};
+
+                /**
+                 * @global
+                 * @namespace BGE/Math/Inner
+                 * @alias BGE.Math.Inner
+                 */
+                BGE.Math.Inner = {};
+
+                /**
+                 * @function
+                 * @memberof! BGE/Math/Inner
+                 * @returns {dynamic}
+                 */
+                function foo () { };
+
+                BGE.Math.Inner.foo = foo;
+            `);
+        });
     });
 
     describe('enums', () => {
