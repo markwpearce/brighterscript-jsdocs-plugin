@@ -2,4 +2,7 @@ const PI = 3.14159265359;
 
 namespace Alpha
   const ROKU = "roku";
+
+  ' Longest time step a single frame can count
+  const MAX_STEP_SECONDS = 1.0 / 30.0
 end namespace

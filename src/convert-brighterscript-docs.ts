@@ -59,6 +59,23 @@ export function resetCreatedCache() {
 let parserLines: string[] = [];
 
 /**
+ * Gets the original source text of a node, with any line breaks collapsed to single spaces
+ */
+function getSourceText(node?: bs.AstNode): string {
+    const range = node?.location?.range;
+    if (!range) {
+        return '';
+    }
+    const lines = parserLines.slice(range.start.line, range.end.line + 1);
+    if (lines.length === 0) {
+        return '';
+    }
+    lines[lines.length - 1] = lines[lines.length - 1].slice(0, range.end.character);
+    lines[0] = lines[0].slice(range.start.character);
+    return lines.map(line => line.trim()).filter(line => line).join(' ');
+}
+
+/**
  * Gets the type name for the given type
  * Defaults to "dynamic" if it can't decide
  * Handles BrighterScript v1 compound types (unions, intersections) and typed arrays,
@@ -345,10 +362,7 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
 
         let paramLine = ` * @param {${paramType}} `;
         if (param.defaultValue?.location?.range) {
-            let start = param.defaultValue.location.range.start;
-            let end = param.defaultValue.location.range.end;
-            let defaultValue = parserLines[start.line].slice(start.character, end.character);
-            paramLine += `[${paramName}=${defaultValue}]`;
+            paramLine += `[${paramName}=${getSourceText(param.defaultValue)}]`;
         } else {
 
             paramLine += paramName;
@@ -621,13 +635,17 @@ function processConst(constStatement: bs.ConstStatement, moduleName = '', namesp
     }
     commentLines.push(' * @readonly');
     commentLines.push(' * @constant');
-    commentLines.push(' * @default');
+    // Literals are emitted as JS so jsdoc infers the default; anything else (eg. `1.0 / 30.0`) may not
+    // be valid JS, so put its source text on the @default tag instead
+    let valueOutput = 'undefined';
+    if (bs.isLiteralExpression(constStatement.value)) {
+        commentLines.push(' * @default');
+        valueOutput = normalizeBrightScriptNumericLiteral(constStatement.value.tokens.value.text);
+    } else {
+        commentLines.push(` * @default ${getSourceText(constStatement.value).replace(/\*\//g, '*\\/')}`);
+    }
     commentLines.push(' */');
     output.push(...commentLines);
-    let valueOutput = {};
-    if (bs.isLiteralExpression(constStatement.value)) {
-        valueOutput = normalizeBrightScriptNumericLiteral(constStatement.value.tokens.value.text);
-    }
     output.push(`var ${constStatement.name} = ${valueOutput};`);
 
     if (namespaceName) {

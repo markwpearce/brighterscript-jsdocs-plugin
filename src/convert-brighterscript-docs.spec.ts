@@ -586,6 +586,63 @@ describe('convertBrighterscriptDocs', () => {
                     var MY_CONSTANT = 0xFF0000FF;
             `);
         });
+
+        it('uses the source text as the default for non-literal constant values', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                    namespace alpha
+                        const MAX_STEP = 1.0 / 30.0
+                        const NEG = -1
+                        const REF = MAX_STEP
+                    end namespace
+                `), `
+                    /**
+                     * @global
+                     * @namespace alpha
+                     */
+                    var alpha = {};
+
+                    /**
+                     * @memberof! alpha
+                     * @readonly
+                     * @constant
+                     * @default 1.0 / 30.0
+                     */
+                    var MAX_STEP = undefined;
+                    alpha.MAX_STEP = MAX_STEP;
+                    /**
+                     * @memberof! alpha
+                     * @readonly
+                     * @constant
+                     * @default -1
+                     */
+                    var NEG = undefined;
+                    alpha.NEG = NEG;
+                    /**
+                     * @memberof! alpha
+                     * @readonly
+                     * @constant
+                     * @default MAX_STEP
+                     */
+                    var REF = undefined;
+                    alpha.REF = REF;
+            `);
+        });
+
+        it('collapses multi-line non-literal constant values onto one line', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                    const ITEMS = [
+                        1,
+                        2
+                    ]
+                `), `
+                    /**
+                     * @readonly
+                     * @constant
+                     * @default [ 1, 2 ]
+                     */
+                    var ITEMS = undefined;
+            `);
+        });
     });
 
     describe('comment adjacency', () => {
