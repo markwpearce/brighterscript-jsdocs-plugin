@@ -550,51 +550,36 @@ function processClass(klass: bs.ClassStatement, moduleName = '', namespaceName =
  * @param parentNamespaceName [parentNamespaceName=""] the namespace this namespace is in
  * @returns the jsdoc string for the namespace provided
  */
-function processNamespace(namespace: bs.NamespaceStatement, moduleName = '', parentNamespaceName = ''): string {
+function processNamespace(namespace: bs.NamespaceStatement, moduleName = ''): string {
 
     const output: string[] = [];
+    // namespace.name is already the fully qualified name (including any enclosing namespaces)
     const namespaceParts = namespace.name.split('.');
-    const namespaceNames: string[] = [];
-    let namespaceNameChain = '';
+    let namespaceName = '';
     for (const namespacePart of namespaceParts) {
-        if (namespaceNameChain.length > 0) {
-            namespaceNameChain += '.';
-        }
-        namespaceNameChain += namespacePart;
-        namespaceNames.push(namespaceNameChain);
-    }
-    let index = 0;
-    for (const namespaceName of namespaceNames) {
-        let subNamespace = namespaceName;
-        if (parentNamespaceName) {
-            subNamespace = parentNamespaceName + '.' + namespaceName;
-        }
-        if (!namespacesCreated.includes(subNamespace.toLowerCase())) {
+        const isRoot = namespaceName.length === 0;
+        namespaceName = isRoot ? namespacePart : namespaceName + '.' + namespacePart;
+        if (!namespacesCreated.includes(namespaceName.toLowerCase())) {
             // have not created this namespace yet
             let commentLines = convertCommentTextToJsDocLines(getCommentLines(namespace));
             commentLines.push(` * @global`);
-            commentLines.push(` * @namespace ${subNamespace.replace(/\./g, '/')}`);
-            if (subNamespace.includes('.')) {
-                commentLines.push(` * @alias ${subNamespace}`);
+            commentLines.push(` * @namespace ${namespaceName.replace(/\./g, '/')}`);
+            if (!isRoot) {
+                commentLines.push(` * @alias ${namespaceName}`);
             }
             commentLines.push(' */');
 
             output.push(...commentLines);
 
-            if (parentNamespaceName || index > 0) {
-                output.push(`${subNamespace} = {};\n`);
+            if (isRoot) {
+                output.push(`var ${namespaceName} = {};\n`);
             } else {
-                output.push(`var ${subNamespace} = {};\n`);
+                output.push(`${namespaceName} = {};\n`);
             }
-            namespacesCreated.push(subNamespace.toLowerCase());
+            namespacesCreated.push(namespaceName.toLowerCase());
         }
-        index++;
     }
-    let totalNamespace = namespace.name;
-    if (parentNamespaceName) {
-        totalNamespace = parentNamespaceName + '.' + totalNamespace;
-    }
-    output.push(processStatements(namespace.body.statements, moduleName, totalNamespace));
+    output.push(processStatements(namespace.body.statements, moduleName, namespace.name));
     return output.join('\n');
 }
 
@@ -723,7 +708,7 @@ function processStatements(statements: bs.Statement[], moduleName = '', namespac
         } else if (bs.isClassStatement(statement)) {
             output.push(processClass(statement, moduleName, namespaceName));
         } else if (bs.isNamespaceStatement(statement)) {
-            output.push(processNamespace(statement, moduleName, namespaceName));
+            output.push(processNamespace(statement, moduleName));
         } else if (bs.isEnumStatement(statement)) {
             output.push(processEnum(statement, moduleName, namespaceName));
         } else if (bs.isConstStatement(statement)) {

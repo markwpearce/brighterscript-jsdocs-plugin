@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Class fields with an object literal default value (`foo = {}`) no longer crash with `this.getLookupTable is not a function` (fixed upstream in `brighterscript@1.0.0-alpha.56`) ([#17](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/17))
 - Constants with a non-literal value (eg. `1.0 / 30.0`, `-1`, or a reference to another constant) no longer emit `[object Object]` and break jsdoc's parser; the value's source text is used as the `@default` instead ([#18](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/18))
 - Multi-line `@param` and `@returns` descriptions now stay with their tag instead of being appended to the function's description. Lines following one of those tags (up to the next tag or a blank comment line) are treated as part of its description ([#11](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/11))
+- Nested namespaces (a `namespace` block inside another) no longer repeat the parent's name, which produced paths like `BGE.BGE.Model3dOps` and a stray `BGE/BGE` namespace page ([markwpearce/brighterscript-game-engine#268](https://github.com/markwpearce/brighterscript-game-engine/issues/268))
 
 ### Added
 
