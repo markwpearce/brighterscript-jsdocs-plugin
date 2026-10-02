@@ -72,6 +72,36 @@ describe('convertBrighterscriptDocs', () => {
       `);
     });
 
+    it('keeps multi-line param and return descriptions with their tags', () => {
+        expectOutput(cbd.convertBrighterscriptDocs(`
+            ' Say hello
+            ' @param {string} name you want to say hello to
+            '   which can be long
+            ' @param count
+            '   how many times to say it
+            ' @returns the greeting
+            '   repeated count times
+            '
+            ' More description after a blank line
+            function sayHello(name as string, count as integer) as string
+                return "Hello, " + name + "!")
+            end function
+      `), `
+            /**
+             * Say hello
+             *
+             * More description after a blank line
+             * @function
+             * @param {string} name you want to say hello to
+             * which can be long
+             * @param {integer} count how many times to say it
+             * @returns {string} the greeting
+             * repeated count times
+             */
+            function sayHello (name, count) { };
+      `);
+    });
+
     it('uses comment type over given type', () => {
         expectOutput(cbd.convertBrighterscriptDocs(`
             ' Say hello

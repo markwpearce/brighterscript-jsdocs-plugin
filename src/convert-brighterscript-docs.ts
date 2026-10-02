@@ -8,6 +8,8 @@ const paramRegexNoType = /@param\s+(?:\[(\w+).*\]|(\w+))[\s\-\s|\s]*(.*)/;
 const returnRegex = /@returns?\s*({(?:[^}]*)})?\s*(.*)/;
 const extendsRegex = /@extends/;
 const moduleRegex = /@module ([^\*\s]+)/;
+const paramOrReturnTagRegex = /^ \* @(?:param|returns?)\b/;
+const tagContinuationRegex = /^ \* [^@\s]/;
 const escapeCharEntities = {
     '&': '&amp;',
     '<': '&lt;',
@@ -195,6 +197,43 @@ function paramOrReturnDescriptionHelper(desc = '') {
     return '';
 }
 
+/**
+ * Folds the lines that follow a `@param` or `@returns` tag (up to the next tag or blank line) into that
+ * tag's line, separated by newlines. Those tags get moved below the description, so without this any
+ * multi-line description would be left behind in the main description.
+ *
+ * @param commentLines jsdoc comment lines, as returned from convertCommentTextToJsDocLines()
+ * @returns the comment lines, with continuation lines merged into their tags
+ */
+function mergeTagContinuationLines(commentLines: string[]) {
+    const output: string[] = [];
+    let inParamOrReturnTag = false;
+    for (const line of commentLines) {
+        if (inParamOrReturnTag && tagContinuationRegex.test(line)) {
+            output[output.length - 1] += '\n' + line;
+            continue;
+        }
+        inParamOrReturnTag = paramOrReturnTagRegex.test(line);
+        output.push(line);
+    }
+    return output;
+}
+
+/**
+ * Splits a (possibly merged) tag line into the tag line itself and the text of its continuation lines
+ */
+function splitTagLine(line: string) {
+    const [tagLine, ...continuationLines] = line.split('\n');
+    return { tagLine: tagLine, continuationText: continuationLines.map(continuation => continuation.replace(/^ \* /, '')) };
+}
+
+/**
+ * Joins the first line of a tag's description with its continuation lines, each on its own jsdoc line
+ */
+function joinDescriptionLines(firstLine = '', continuationText: string[] = []) {
+    return [paramOrReturnDescriptionHelper(firstLine), ...continuationText].filter(line => line).join('\n * ');
+}
+
 function getMemberOf(moduleName = '', namespaceName = '') {
     const memberOf = namespaceName || moduleName;
     const memberType = namespaceName ? '' : 'module:';
@@ -267,7 +306,7 @@ function convertCommentTextToJsDocLines(commentLines: string[] = []) {
  */
 function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatement | bs.MethodStatement, moduleName = '', namespaceName = '') {
     const output: string[] = [];
-    let commentLines = convertCommentTextToJsDocLines(getCommentLines(func));
+    let commentLines = mergeTagContinuationLines(convertCommentTextToJsDocLines(getCommentLines(func)));
     const paramNameList: string[] = [];
     const params = bs.isInterfaceMethodStatement(func) ? func.params : func.func.parameters;
     let returnTypeExpression = bs.isInterfaceMethodStatement(func) ? func.returnTypeExpression : func.func.returnTypeExpression;
@@ -292,7 +331,8 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
 
         // remove @param lines for the current param
         commentLines = commentLines.filter(commentLine => {
-            let commentMatch = paramRegex.exec(commentLine);
+            const { tagLine, continuationText } = splitTagLine(commentLine);
+            let commentMatch = paramRegex.exec(tagLine);
             if (commentMatch) {
 
                 const commentParamName = (commentMatch[2] || commentMatch[3]) || '';
@@ -302,17 +342,17 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
                     // same parameter name - use these details
                     if (commentParamType) {
                         paramType = commentParamType.trim();
-                        paramDescription = commentMatch[4] || paramDescription;
+                        paramDescription = joinDescriptionLines(commentMatch[4], continuationText) || paramDescription;
                     }
                     return false;
                 }
             } else {
-                commentMatch = paramRegexNoType.exec(commentLine);
+                commentMatch = paramRegexNoType.exec(tagLine);
                 if (commentMatch) {
                     const commentParamName = (commentMatch[1] || commentMatch[2]) || '';
                     if (paramName.trim().toLowerCase() === commentParamName.trim().toLowerCase()) {
                         // same parameter name - use these details
-                        paramDescription = commentMatch[3] || paramDescription;
+                        paramDescription = joinDescriptionLines(commentMatch[3], continuationText) || paramDescription;
                         return false;
                     }
                 }
@@ -329,7 +369,7 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
         }
 
         if (paramDescription) {
-            paramLine += ` ${paramOrReturnDescriptionHelper(paramDescription)}`;
+            paramLine += ` ${paramDescription}`;
         }
         output.push(paramLine);
     }
@@ -348,7 +388,8 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
     let returnLine = ` * @returns {${returnTypeString}}`;
     // Find the return line in the comments
     for (let i = 0; i < commentLines.length; i++) {
-        let commentMatch = returnRegex.exec(commentLines[i]);
+        const { tagLine, continuationText } = splitTagLine(commentLines[i]);
+        let commentMatch = returnRegex.exec(tagLine);
         if (commentMatch) {
             let commentReturnType = returnTypeString;
             if (commentMatch[1] && commentMatch[1].trim().toLowerCase() === commentReturnType.toLowerCase()) {
@@ -356,8 +397,9 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
                 commentReturnType = commentMatch[1].trim();
             }
             returnLine = ` * @returns {${commentReturnType}}`;
-            if (commentMatch[2]) {
-                returnLine += ' ' + paramOrReturnDescriptionHelper(commentMatch[2]);
+            const returnDescription = joinDescriptionLines(commentMatch[2], continuationText);
+            if (returnDescription) {
+                returnLine += ' ' + returnDescription;
             }
             // remove the original comment @returns line
             commentLines.splice(i, 1);
