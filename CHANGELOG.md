@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   Enum and const values containing BrightScript hex literals (`&hFF0000FF`) are now normalized to valid JS syntax (`0xFF0000FF`) before being emitted, instead of breaking jsdoc's parser ([#14](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/14))
 -   Class fields with an object literal default value (`foo = {}`) no longer crash with `this.getLookupTable is not a function` (fixed upstream in `brighterscript@1.0.0-alpha.56`) ([#17](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/17))
+-   Constants with a non-literal value (eg. `1.0 / 30.0`, `-1`, or a reference to another constant) no longer emit `[object Object]` and break jsdoc's parser; the value's source text is used as the `@default` instead ([#18](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/18))
 
 ### Added
 
