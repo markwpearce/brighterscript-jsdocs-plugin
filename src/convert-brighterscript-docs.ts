@@ -569,7 +569,6 @@ function processClass(klass: bs.ClassStatement, moduleName = '', namespaceName =
  *
  * @param namespace the actual namespace statement
  * @param moduleName [moduleName=""] the module name this namespace is in
- * @param parentNamespaceName [parentNamespaceName=""] the namespace this namespace is in
  * @returns the jsdoc string for the namespace provided
  */
 function processNamespace(namespace: bs.NamespaceStatement, moduleName = ''): string {
