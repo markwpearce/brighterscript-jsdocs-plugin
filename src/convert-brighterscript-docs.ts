@@ -20,6 +20,23 @@ const escapeCharEntities = {
 
 const typeGetOptions: bs.GetTypeOptions = { flags: bs.SymbolTypeFlag.typetime };
 
+// Words that can't be used as a JS parameter name, but are allowed as a BrightScript one
+const jsReservedWords = new Set([
+    'arguments', 'await', 'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
+    'delete', 'do', 'else', 'enum', 'eval', 'export', 'extends', 'false', 'finally', 'for', 'function',
+    'if', 'implements', 'import', 'in', 'instanceof', 'interface', 'let', 'new', 'null', 'package',
+    'private', 'protected', 'public', 'return', 'static', 'super', 'switch', 'this', 'throw', 'true',
+    'try', 'typeof', 'var', 'void', 'while', 'with', 'yield'
+]);
+
+/**
+ * Prefixes a name with `_` if it is a JS reserved word, so it can be used in the generated
+ * function stub without breaking jsdoc's parser. The `@param` tags keep the original name.
+ */
+function toJsSafeIdentifier(name: string): string {
+    return jsReservedWords.has(name.toLowerCase()) ? `_${name}` : name;
+}
+
 /**
  * Converts BrightScript hex literal tokens (`&hFF`) to valid JS literal syntax (`0xFF`) so
  * jsdoc's parser doesn't choke on the raw BrightScript source text.
@@ -325,7 +342,7 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
     // Find the param line in the comments that match each param
     for (const param of params) {
         let paramName = param.tokens.name.text;
-        paramNameList.push(paramName);
+        paramNameList.push(toJsSafeIdentifier(paramName));
         let paramType = getTypeName(param.getType(typeGetOptions));
         let paramDescription = '';
 
@@ -414,7 +431,9 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
     }
 
     const funcName = bs.isInterfaceMethodStatement(func) ? func.tokens.name.text : func.tokens.name.text;
-    let funcDeclaration = `function ${funcName} (${paramNameList.join(', ')}) { }; \n`;
+    // a reserved word is only a problem as a plain function's name - class/interface members can use them
+    const stubFuncName = bs.isFunctionStatement(func) ? toJsSafeIdentifier(funcName) : funcName;
+    let funcDeclaration = `function ${stubFuncName} (${paramNameList.join(', ')}) { }; \n`;
     if (bs.isInterfaceMethodStatement(func)) {
         const iFaceName = (func.parent as bs.InterfaceStatement)?.name;
         totalOutput.push(returnLine);
@@ -433,13 +452,16 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
         }
     } else {
         totalOutput.push(returnLine);
+        if (stubFuncName !== funcName) {
+            totalOutput.push(` * @name ${funcName}`);
+        }
     }
 
     totalOutput.push(' */');
 
     totalOutput.push(funcDeclaration);
     if (namespaceName && bs.isFunctionStatement(func)) {
-        totalOutput.push(`${namespaceName}.${funcName} = ${funcName}; `);
+        totalOutput.push(`${namespaceName}.${stubFuncName} = ${stubFuncName}; `);
     }
 
     return totalOutput.join('\n');
@@ -547,7 +569,6 @@ function processClass(klass: bs.ClassStatement, moduleName = '', namespaceName =
  *
  * @param namespace the actual namespace statement
  * @param moduleName [moduleName=""] the module name this namespace is in
- * @param parentNamespaceName [parentNamespaceName=""] the namespace this namespace is in
  * @returns the jsdoc string for the namespace provided
  */
 function processNamespace(namespace: bs.NamespaceStatement, moduleName = ''): string {

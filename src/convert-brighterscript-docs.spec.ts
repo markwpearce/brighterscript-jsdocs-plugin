@@ -72,6 +72,111 @@ describe('convertBrighterscriptDocs', () => {
       `);
     });
 
+    it('mangles params named with JS reserved words in the function stub only', () => {
+        expectOutput(cbd.convertBrighterscriptDocs(`
+            ' @param {dynamic} var - value to check
+            function isValid(var as dynamic, default = {} as object, delete = 1 as integer) as boolean
+                return var <> invalid
+            end function
+      `), `
+            /**
+             * @function
+             * @param {dynamic} var value to check
+             * @param {object} [default={}]
+             * @param {integer} [delete=1]
+             * @returns {boolean}
+             */
+            function isValid (_var, _default, _delete) { };
+      `);
+    });
+
+    it('mangles function names that are JS reserved words in the stub, keeping the real name with @name', () => {
+        expectOutput(cbd.convertBrighterscriptDocs(`
+            ' removes a thing
+            function delete(index as integer) as boolean
+                return true
+            end function
+            namespace Utils
+                function var() as string
+                    return ""
+                end function
+            end namespace
+      `), `
+            /**
+             * removes a thing
+             * @function
+             * @param {integer} index
+             * @returns {boolean}
+             * @name delete
+             */
+            function _delete (index) { };
+
+            /**
+             * @global
+             * @namespace Utils
+             */
+            var Utils = {};
+
+            /**
+             * @function
+             * @memberof! Utils
+             * @returns {string}
+             * @name var
+             */
+            function _var () { };
+
+            Utils._var = _var;
+      `);
+    });
+
+    it('mangles params named with JS reserved words in class method and interface stubs', () => {
+        expectOutput(cbd.convertBrighterscriptDocs(`
+            class Thing
+                sub new(var as dynamic)
+                end sub
+                function check(default as dynamic) as boolean
+                    return true
+                end function
+            end class
+            interface Checker
+                function check(delete as dynamic) as boolean
+            end interface
+      `), `
+            /**
+             */
+            class Thing {
+
+            /**
+             * @function
+             * @param {dynamic} var
+             * @constructor
+             * @returns {Thing}
+             */
+            constructor(_var) { };
+
+            /**
+             * @function
+             * @param {dynamic} default
+             * @returns {boolean}
+             */
+            check (_default) { };
+
+            }
+
+            /**
+             * @interface
+             */
+            function Checker() { };
+
+            /**
+             * @function
+             * @param {dynamic} delete
+             * @returns {boolean}
+             */
+            Checker.prototype.check = function(_delete) { };
+      `);
+    });
+
     it('keeps multi-line param and return descriptions with their tags', () => {
         expectOutput(cbd.convertBrighterscriptDocs(`
             ' Say hello

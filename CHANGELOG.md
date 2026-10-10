@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Parameters and functions named with JavaScript reserved words (eg. `var`, `default`, `delete`) no longer break jsdoc's parser. The name is prefixed with `_` in the generated function stub only; the documented `@param` keeps the original name, and functions get a `@name` tag with their original name ([#23](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/23))
+
 ## [1.0.0-alpha.56] - 2026-10-02
 
 ### Fixed
