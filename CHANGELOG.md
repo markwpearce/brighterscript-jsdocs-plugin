@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0-alpha.57] - 2026-10-14
+## [1.0.0-alpha.58] - 2026-11-16
 
 ### Fixed
 
 - BrighterScript-style compound types written in `@param`/`@returns` doc comments (eg. `@param {string or integer} x`) are now converted to JSDoc types (`{(string|integer)}`, or `{dynamic}` for `and` intersections) instead of being passed through as-is and breaking jsdoc's type parser ([#26](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/26))
+
+### Changed
+
+- Updated to `brighterscript@^1.0.0-alpha.58` (BrighterScript v1 is still in alpha), and moved off its deprecated `location`/`range` getters
+
+## [1.0.0-alpha.57] - 2026-10-14
+
+### Fixed
+
 - Parameters and functions named with JavaScript reserved words (eg. `var`, `default`, `delete`) no longer break jsdoc's parser. The name is prefixed with `_` in the generated function stub only; the documented `@param` keeps the original name, and functions get a `@name` tag with their original name ([#23](https://github.com/markwpearce/brighterscript-jsdocs-plugin/issues/23))
 
 ### Changed
