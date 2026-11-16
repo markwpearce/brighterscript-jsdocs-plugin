@@ -73,23 +73,24 @@ export function resetCreatedCache() {
     modulesCreated.length = 0;
 }
 
-let parserLines: string[] = [];
+let parserSource = '';
 
 /**
  * Gets the original source text of a node, with any line breaks collapsed to single spaces
  */
 function getSourceText(node?: bs.AstNode): string {
-    const range = node?.location?.range;
-    if (!range) {
+    if (!node?.sourceInfo) {
         return '';
     }
-    const lines = parserLines.slice(range.start.line, range.end.line + 1);
-    if (lines.length === 0) {
-        return '';
-    }
-    lines[lines.length - 1] = lines[lines.length - 1].slice(0, range.end.character);
-    lines[0] = lines[0].slice(range.start.character);
+    const lines = parserSource.slice(node.startPosition, node.endPosition).split('\n');
     return lines.map(line => line.trim()).filter(line => line).join(' ');
+}
+
+/**
+ * Gets the 0-based line a token or node starts on, or `undefined` for synthetic ones
+ */
+function getStartLine(locatable: bs.Locatable): number | undefined {
+    return bs.util.getStartPosition(locatable)?.line;
 }
 
 /**
@@ -188,8 +189,8 @@ function getCommentLines(node?: bs.AstNode): string[] {
 
     let startIndex = commentTokens.length - 1;
     for (let i = commentTokens.length - 2; i >= 0; i--) {
-        const currentLine = commentTokens[i].location?.range?.start?.line;
-        const nextLine = commentTokens[i + 1].location?.range?.start?.line;
+        const currentLine = getStartLine(commentTokens[i]);
+        const nextLine = getStartLine(commentTokens[i + 1]);
         if (currentLine === undefined || nextLine === undefined || currentLine !== nextLine - 1) {
             break;
         }
@@ -197,8 +198,8 @@ function getCommentLines(node?: bs.AstNode): string[] {
     }
     const contiguousCommentTokens = commentTokens.slice(startIndex);
 
-    const lastCommentLine = contiguousCommentTokens[contiguousCommentTokens.length - 1].location?.range?.start?.line;
-    const ownerStartLine = owner.location?.range?.start?.line;
+    const lastCommentLine = getStartLine(contiguousCommentTokens[contiguousCommentTokens.length - 1]);
+    const ownerStartLine = getStartLine(owner);
     if (lastCommentLine === undefined || ownerStartLine === undefined || lastCommentLine + 1 !== ownerStartLine) {
         return [];
     }
@@ -397,7 +398,7 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
         });
 
         let paramLine = ` * @param {${paramType}} `;
-        if (param.defaultValue?.location?.range) {
+        if (param.defaultValue?.sourceInfo) {
             paramLine += `[${paramName}=${getSourceText(param.defaultValue)}]`;
         } else {
 
@@ -765,7 +766,7 @@ function processStatements(statements: bs.Statement[], moduleName = '', namespac
 
 
 export function convertBrighterscriptDocs(source: string, parseMode: bs.ParseMode = bs.ParseMode.BrighterScript, moduleName = '') {
-    parserLines = source.split('\n');
+    parserSource = source;
     const parserOptions: bs.ParseOptions = { mode: parseMode };
 
     const lexResult = bs.Lexer.scan(source);
@@ -799,7 +800,7 @@ export function getModuleName(filename: string, source: string) {
 
 export const handlers = {
     beforeParse: (e: { source: string; filename: string }) => {
-        parserLines = e.source.split('\n');
+        parserSource = e.source;
         const fileExt = path.extname(e.filename);
         let parseMode = bs.ParseMode.BrightScript;
         if (fileExt.toLowerCase() === '.bs') {
