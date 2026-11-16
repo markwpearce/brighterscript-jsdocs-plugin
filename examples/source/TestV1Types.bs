@@ -43,3 +43,10 @@ end class
 function getPeople() as Person[]
   return []
 end function
+
+' Formats a value using a BrighterScript-style union type in the doc comment
+' @param {string or integer} value the value to format
+' @return {string} the formatted value
+function formatValueFromComment(value) as string
+    return value.ToStr()
+end function

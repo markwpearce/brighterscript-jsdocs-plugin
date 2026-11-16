@@ -897,6 +897,75 @@ describe('convertBrighterscriptDocs', () => {
             `);
         });
 
+        it('converts a BrighterScript-style union type in a @param comment to a jsdoc union', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' Does something
+                ' @param {string or integer} x the input
+                ' @param {Person Or string[]} y other input
+                sub doStuff(x, y)
+                end sub
+            `), `
+                /**
+                 * Does something
+                 * @function
+                 * @param {(string|integer)} x the input
+                 * @param {(Person|Array.<string>)} y other input
+                 * @returns {void}
+                 */
+                function doStuff (x, y) { };
+            `);
+        });
+
+        it('falls back to dynamic for a BrighterScript-style intersection type in a @param comment', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' Does something
+                ' @param {HasId and HasUrl} x the input
+                sub doStuff(x)
+                end sub
+            `), `
+                /**
+                 * Does something
+                 * @function
+                 * @param {dynamic} x the input
+                 * @returns {void}
+                 */
+                function doStuff (x) { };
+            `);
+        });
+
+        it('leaves jsdoc-style union types in a @param comment alone', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' Does something
+                ' @param {string|integer} x the input
+                sub doStuff(x)
+                end sub
+            `), `
+                /**
+                 * Does something
+                 * @function
+                 * @param {string|integer} x the input
+                 * @returns {void}
+                 */
+                function doStuff (x) { };
+            `);
+        });
+
+        it('matches a BrighterScript-style union type in a @returns comment to the function return type', () => {
+            expectOutput(cbd.convertBrighterscriptDocs(`
+                ' Does something
+                ' @return {string or boolean} the result
+                function doStuff() as string or boolean
+                end function
+            `), `
+                /**
+                 * Does something
+                 * @function
+                 * @returns {(string|boolean)} the result
+                 */
+                function doStuff () { };
+            `);
+        });
+
         it('falls back to dynamic for an intersection type param, since JSDoc has no intersection syntax', () => {
             expectOutput(cbd.convertBrighterscriptDocs(`
                 interface HasId

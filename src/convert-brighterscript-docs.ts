@@ -135,6 +135,25 @@ function getTypeName(type?: bs.BscType): string {
 }
 
 /**
+ * Converts a type written in a doc comment (eg. `@param {string or integer} x`) to a JSDoc type.
+ * BrighterScript-style compound types (`or`/`and`) aren't valid JSDoc type expressions, so they are
+ * parsed as a BrighterScript type and run through getTypeName(). Anything else is left as written.
+ */
+function getCommentTypeName(typeText: string): string {
+    typeText = typeText.trim();
+    if (!/\s(?:or|and)\s/i.test(typeText)) {
+        return typeText;
+    }
+    const { tokens } = bs.Lexer.scan(`sub __commentType(x as ${typeText})\nend sub`);
+    const { ast, diagnostics } = new bs.Parser().parse(tokens, { mode: bs.ParseMode.BrighterScript });
+    const func = ast.statements[0];
+    if (diagnostics.length > 0 || !bs.isFunctionStatement(func)) {
+        return typeText;
+    }
+    return getTypeName(func.func.parameters[0]?.getType(typeGetOptions));
+}
+
+/**
  * Gets the node whose leading trivia holds the doc comment for a statement.
  * If the statement has annotations, the comment appears before the first annotation,
  * not before the statement itself.
@@ -358,7 +377,7 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
                 if (paramName.trim().toLowerCase() === commentParamName.trim().toLowerCase()) {
                     // same parameter name - use these details
                     if (commentParamType) {
-                        paramType = commentParamType.trim();
+                        paramType = getCommentTypeName(commentParamType);
                         paramDescription = joinDescriptionLines(commentMatch[4], continuationText) || paramDescription;
                     }
                     return false;
@@ -409,9 +428,10 @@ function processFunction(func: bs.FunctionStatement | bs.InterfaceMethodStatemen
         let commentMatch = returnRegex.exec(tagLine);
         if (commentMatch) {
             let commentReturnType = returnTypeString;
-            if (commentMatch[1] && commentMatch[1].trim().toLowerCase() === commentReturnType.toLowerCase()) {
+            const commentTypeName = commentMatch[1] ? getCommentTypeName(commentMatch[1].replace(/^{|}$/g, '')) : '';
+            if (commentTypeName && commentTypeName.toLowerCase() === commentReturnType.toLowerCase()) {
                 // there is a return type given, and it matches the type of the function
-                commentReturnType = commentMatch[1].trim();
+                commentReturnType = commentTypeName;
             }
             returnLine = ` * @returns {${commentReturnType}}`;
             const returnDescription = joinDescriptionLines(commentMatch[2], continuationText);
